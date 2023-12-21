@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omok Game</title>
+    <style>
+        .omok-board {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            border: 1px solid #000;
+            background-color: #e5aa61;
+        }
+
+        .omok-dot {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+        }
+
+        .omok-dot::before {
+            content: "";
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background-color: #000;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .omok-stone.black {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #000;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+        }
+
+        .omok-stone.white {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #fff;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+        }
+
+        .omok-line {
+            position: absolute;
+            background-color: #000;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Omok Game</h1>
+
+<div class="omok-board">
+    <!-- 각 점에 클릭 이벤트를 가진 도트를 배치 -->
+    <div th:each="row : ${#numbers.sequence(0, 14)}">
+        <div th:each="col : ${#numbers.sequence(0, 14)}"
+             class="omok-dot"
+             th:attr="style='top: ' + (${row * 40 + 21}) + 'px; left: ' + (${col * 40 + 20}) + 'px;'"
+             th:onclick="'handleDotClick(this)'"
+             th:data-row="${row}"
+             th:data-col="${col}"
+        ></div>
+    </div>
+
+    <!-- 가로선 그리기 -->
+    <div th:each="row : ${#numbers.sequence(0, 14)}"
+         class="omok-line"
+         th:style="'top: ' + (${row * 40 + 20}) + 'px; left: 20px; width: 560px; height: 1px;'"></div>
+
+    <!-- 세로선 그리기 -->
+    <div th:each="col : ${#numbers.sequence(0, 14)}"
+         class="omok-line"
+         th:style="'top: 20px; left: ' + (${col * 40 + 20}) + 'px; width: 1px; height: 560px;'"></div>
+</div>
+
+<script>
+    let seq = 0;
+    // dot 클릭 이벤트
+    function handleDotClick(e) {
+        const row = e.getAttribute("data-row");
+        const col = e.getAttribute("data-col");
+        const stone = document.createElement('div');
+        stone.className = 'omok-stone ' + (seq++%2 == 0 ? 'black' : 'white');
+        stone.style.top = row * 40 + 20 + 'px';
+        stone.style.left = col * 40 + 20 + 'px';
+        stone.setAttribute("data-row",row);
+        stone.setAttribute("data-col",col);
+        document.querySelector('.omok-board').appendChild(stone);
+        checkWin();
+    }
+
+    //가로,세로,대각선, 역대각선으로 다섯 개 이상의 돌이 연속되어 있는지 확인
+    function checkWin() {
+        const board = document.querySelector('.omok-board');
+        const stones = Array.from(board.querySelectorAll('.omok-stone'));
+
+        for (const stone of stones) {
+            const stoneColor = stone.classList.contains('black') ? 'black' : 'white';
+            const stonePosition = {
+                top: parseInt(stone.style.top),
+                left: parseInt(stone.style.left)
+            };
+
+            if (checkDirection(board, stoneColor, stonePosition, 1, 0) || // 가로
+                checkDirection(board, stoneColor, stonePosition, 0, 1) || // 세로
+                checkDirection(board, stoneColor, stonePosition, 1, 1) || // 대각선
+                checkDirection(board, stoneColor, stonePosition, 1, -1)) {  // 역대각선
+                alert(`${stoneColor} wins!`);
+                return;
+            }
+        }
+    }
+
+    // 특정 위치에서 주어진 방향으로 가로,세로,대각선, 역대각선으로 다섯 개 이상의 돌이 연속되어 있는지 확인
+    function checkDirection(board, color, position, directionX, directionY) {
+        const consecutiveStones = [position];
+        for (let i = 1; i < 5; i++) {
+            const nextPosition = {
+                top: position.top + i * directionY * 40,
+                left: position.left + i * directionX * 40
+            };
+            const nextStone = findStoneAtPosition(board, nextPosition);
+            if (nextStone && nextStone.classList.contains(color)) {
+                consecutiveStones.push(nextPosition);
+            } else {
+                break;
+            }
+        }
+        for (let i = 1; i < 5; i++) {
+            const prevPosition = {
+                top: position.top - i * directionY * 40,
+                left: position.left - i * directionX * 40
+            };
+            const prevStone = findStoneAtPosition(board, prevPosition);
+            if (prevStone && prevStone.classList.contains(color)) {
+                consecutiveStones.push(prevPosition);
+            } else {
+                break;
+            }
+        }
+        if (consecutiveStones.length >= 5) {
+            return true;
+        }
+        return false;
+    }
+
+    // 주어진 위치에 있는 돌을 찾아 반환
+    function findStoneAtPosition(board, position) {
+        const stones = Array.from(board.querySelectorAll('.omok-stone'));
+        return stones.find(stone => {
+            const stonePosition = {
+                top: parseInt(stone.style.top),
+                left: parseInt(stone.style.left)
+            };
+            return stonePosition.top === position.top && stonePosition.left === position.left;
+        });
+    }
+</script>
+
+</body>
+</html>
