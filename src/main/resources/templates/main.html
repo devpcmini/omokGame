@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omok Game</title>
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+            flex-direction: column;
+        }
+
+        .login-container {
+            text-align: center;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 70%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .login-container input {
+            width: 70%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-right: 15px;
+            height: 100%;
+        }
+
+        .login-container button {
+            background-color: #e5aa61;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .login-container button:hover {
+            background-color: #45a049;
+        }
+
+        .frameElement {
+            width: 70%;
+            height: 100%;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Omok Game</h1>
+<div class="login-container">
+    <input type="text" id="nickname" placeholder="Enter your nickname">
+    <br>
+    <button id="loginBtn" onclick="login()">Login</button>
+    <span id="loginNickname" style="display: none"></span>
+</div>
+<iframe class="frameElement" id="frameElement"></iframe>
+<script>
+    // window.addEventListener("message", function(message) {
+    //     if(message.data instanceof Object) {
+    //         sendMessageToServer(message.data);
+    //     }
+    // });
+
+    const socket = new WebSocket('ws://localhost:8080/ws');
+
+    socket.onopen = function(event) {
+        console.log('WebSocket connection opened:', event);
+    };
+
+    socket.onmessage = function(event) {
+        // 서버로부터 수신된 메시지 처리 (게임 상태 업데이트 등)
+        const receivedMessage = JSON.parse(event.data);
+        // 플레이어 간 통신 메시지 처리 로직...
+        console.log(receivedMessage);
+        const childFrame = document.getElementById('frameElement');
+        console.log(childFrame);
+        switch (receivedMessage.type){
+            case 'login' :
+                document.querySelector('#nickname').style.display = 'none';
+                document.querySelector('#loginBtn').style.display = 'none';
+                document.querySelector('#loginNickname').style.display = '';
+                document.querySelector('#loginNickname').innerText = 'NickName : ' + receivedMessage.nickname;
+
+                childFrame.src = '/omok/omokMain';
+                break;
+            default :
+                childFrame.addEventListener('load', function() {
+                    childFrame.contentWindow.postMessage(receivedMessage, '*');
+                });
+                break;
+        }
+    };
+
+    socket.onclose = function(event) {
+        console.log('WebSocket connection closed:', event);
+    };
+
+    // 이벤트 발생 시 서버로 메시지 전송
+    function sendMessageToServer(message) {
+        socket.send(JSON.stringify(message));
+    }
+
+    function login() {
+        const nickname = document.getElementById('nickname').value;
+        const message = {type: 'login', nickname : nickname };
+        sendMessageToServer(message);
+    }
+
+    let seq = 0;
+    let winner;
+    // dot 클릭 이벤트
+    function handleDotClick(e) {
+        if(winner){
+            return;
+        }
+        const row = e.getAttribute("data-row");
+        const col = e.getAttribute("data-col");
+        const message = {type: 'placingStone', color: seq%2==0 ? 'black' : 'white' , row:row , col:col };
+        sendMessageToServer(message);
+    }
+
+    //가로,세로,대각선, 역대각선으로 다섯 개 이상의 돌이 연속되어 있는지 확인
+    function checkWin() {
+        const board = document.querySelector('.omok-board');
+        const stones = Array.from(board.querySelectorAll('.omok-stone'));
+
+        for (const stone of stones) {
+            const stoneColor = stone.classList.contains('black') ? 'black' : 'white';
+            const stonePosition = {
+                top: parseInt(stone.style.top),
+                left: parseInt(stone.style.left)
+            };
+
+            if (checkDirection(board, stoneColor, stonePosition, 1, 0) || // 가로
+                checkDirection(board, stoneColor, stonePosition, 0, 1) || // 세로
+                checkDirection(board, stoneColor, stonePosition, 1, 1) || // 대각선
+                checkDirection(board, stoneColor, stonePosition, 1, -1)) {  // 역대각선
+                const message = {type: 'winner', color: stoneColor };
+                sendMessageToServer(message);
+                return;
+            }
+        }
+    }
+
+    // 특정 위치에서 주어진 방향으로 가로,세로,대각선, 역대각선으로 다섯 개 이상의 돌이 연속되어 있는지 확인
+    function checkDirection(board, color, position, directionX, directionY) {
+        const consecutiveStones = [position];
+        for (let i = 1; i < 5; i++) {
+            const nextPosition = {
+                top: position.top + i * directionY * 40,
+                left: position.left + i * directionX * 40
+            };
+            const nextStone = findStoneAtPosition(board, nextPosition);
+            if (nextStone && nextStone.classList.contains(color)) {
+                consecutiveStones.push(nextPosition);
+            } else {
+                break;
+            }
+        }
+        for (let i = 1; i < 5; i++) {
+            const prevPosition = {
+                top: position.top - i * directionY * 40,
+                left: position.left - i * directionX * 40
+            };
+            const prevStone = findStoneAtPosition(board, prevPosition);
+            if (prevStone && prevStone.classList.contains(color)) {
+                consecutiveStones.push(prevPosition);
+            } else {
+                break;
+            }
+        }
+        if (consecutiveStones.length >= 5) {
+            return true;
+        }
+        return false;
+    }
+
+    // 주어진 위치에 있는 돌을 찾아 반환
+    function findStoneAtPosition(board, position) {
+        const stones = Array.from(board.querySelectorAll('.omok-stone'));
+        return stones.find(stone => {
+            const stonePosition = {
+                top: parseInt(stone.style.top),
+                left: parseInt(stone.style.left)
+            };
+            return stonePosition.top === position.top && stonePosition.left === position.left;
+        });
+    }
+
+    // 방 생성 함수
+    function createRoom() {
+        const roomName = document.getElementById('roomNameInput').value;
+        const createRoomMessage = { type: 'create', roomName: roomName };
+        sendMessageToServer(createRoomMessage);
+    }
+
+    // 방 참가 함수
+    function joinRoom() {
+        const roomName = document.getElementById('roomNameInput').value;
+        const joinRoomMessage = { type: 'join', roomName: roomName };
+        sendMessageToServer(joinRoomMessage);
+    }
+</script>
+
+</body>
+</html>

@@ -85,21 +85,97 @@
          class="omok-line"
          th:style="'top: 20px; left: ' + (${col * 40 + 20}) + 'px; width: 1px; height: 560px;'"></div>
 </div>
+<input type="text" id="roomNameInput" placeholder="Enter Room Name">
+<button onclick="createRoom()">Create Room</button>
+<button onclick="joinRoom()">Join Room</button>
+<button id="1234">무르기</button>
+<button id="5678">포기</button>
+<div id="rooms"></div>
 
 <script>
+    window.addEventListener('load', function() {
+        document.addEventListener("message", function (message) {
+            console.log(message);
+            if (message.data instanceof Object) {
+                const receivedMessage = message.data;
+                console.log(receivedMessage)
+                switch (receivedMessage.type) {
+                    case 'placingStone' :
+                        const stone = document.createElement('div');
+                        stone.className = 'omok-stone ' + receivedMessage.color + ' ' + seq++;
+                        stone.style.top = receivedMessage.row * 40 + 20 + 'px';
+                        stone.style.left = receivedMessage.col * 40 + 20 + 'px';
+                        stone.setAttribute("data-row", receivedMessage.row);
+                        stone.setAttribute("data-col", receivedMessage.col);
+                        document.querySelector('.omok-board').appendChild(stone);
+                        checkWin();
+                        break;
+                    case 'winner' :
+                        winner = receivedMessage.color;
+                        alert(winner + ' wins!');
+                        break;
+                    case 'create' :
+
+                        break;
+                    case 'join' :
+
+                        break;
+                    case 'rooms' :
+                        const rooms = document.querySelector('#rooms');
+                        rooms.innerHTML = '';
+                        receivedMessage.roomInfos.forEach(roomInfo => {
+                            // 방 목록에 추가될 요소 생성
+                            const roomElement = document.createElement('div');
+                            roomElement.classList.add('room');
+
+                            // 방 이름 표시
+                            const roomNameElement = document.createElement('span');
+                            roomNameElement.textContent = roomInfo.roomName;
+
+                            // 참여 인원 표시
+                            const participantsElement = document.createElement('span');
+                            participantsElement.textContent = '참여 인원: ' + roomInfo.playerCount;
+
+                            // 입장 버튼 생성
+                            const enterButton = document.createElement('button');
+                            enterButton.textContent = '입장';
+                            enterButton.classList.add('enter-button');
+                            enterButton.addEventListener('click', () => enterRoom(roomInfo.roomName));
+
+                            // 방 이름과 입장 버튼을 방 목록에 추가
+                            roomElement.appendChild(roomNameElement);
+                            roomElement.appendChild(participantsElement);
+                            roomElement.appendChild(enterButton);
+
+                            // 방 목록 컨테이너에 방 추가
+                            rooms.appendChild(roomElement);
+                        });
+                        break;
+                }
+            }
+        });
+    });
+
+    function postMessage(message){
+        window.parent.postMessage(message);
+    }
+
+    function enterRoom(roomName) {
+        // TODO: 방에 입장하는 로직 구현
+        console.log(`Entering room: ${roomName}`);
+    }
+
     let seq = 0;
+    let winner;
     // dot 클릭 이벤트
     function handleDotClick(e) {
+        if(winner){
+            return;
+        }
         const row = e.getAttribute("data-row");
         const col = e.getAttribute("data-col");
-        const stone = document.createElement('div');
-        stone.className = 'omok-stone ' + (seq++%2 == 0 ? 'black' : 'white');
-        stone.style.top = row * 40 + 20 + 'px';
-        stone.style.left = col * 40 + 20 + 'px';
-        stone.setAttribute("data-row",row);
-        stone.setAttribute("data-col",col);
-        document.querySelector('.omok-board').appendChild(stone);
-        checkWin();
+        const message = {type: 'placingStone', color: seq%2==0 ? 'black' : 'white' , row:row , col:col };
+        postMessage(message);
     }
 
     //가로,세로,대각선, 역대각선으로 다섯 개 이상의 돌이 연속되어 있는지 확인
@@ -118,7 +194,8 @@
                 checkDirection(board, stoneColor, stonePosition, 0, 1) || // 세로
                 checkDirection(board, stoneColor, stonePosition, 1, 1) || // 대각선
                 checkDirection(board, stoneColor, stonePosition, 1, -1)) {  // 역대각선
-                alert(`${stoneColor} wins!`);
+                const message = {type: 'winner', color: stoneColor };
+                postMessage(message);
                 return;
             }
         }
@@ -167,6 +244,20 @@
             };
             return stonePosition.top === position.top && stonePosition.left === position.left;
         });
+    }
+
+    // 방 생성 함수
+    function createRoom() {
+        const roomName = document.getElementById('roomNameInput').value;
+        const createRoomMessage = { type: 'create', roomName: roomName };
+        postMessage(createRoomMessage);
+    }
+
+    // 방 참가 함수
+    function joinRoom() {
+        const roomName = document.getElementById('roomNameInput').value;
+        const joinRoomMessage = { type: 'join', roomName: roomName };
+        postMessage(joinRoomMessage);
     }
 </script>
 

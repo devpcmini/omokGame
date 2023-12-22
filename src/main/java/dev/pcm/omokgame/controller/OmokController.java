@@ -11,9 +11,11 @@ public class OmokController {
 
     @GetMapping("/main")
     public String showOmokPage(Model model) {
-        model.addAttribute("playerName", "John Doe");
-        model.addAttribute("score", 100);
+        return "main";
+    }
 
+    @GetMapping("/omokMain")
+    public String showOmokMainPage(Model model) {
         return "omokMain";
     }
 }
