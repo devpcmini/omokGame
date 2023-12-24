@@ -63,6 +63,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 joinRoom(session, jsonNode);
                 break;
             case "login":
+                session.getAttributes().put("nickname",jsonNode.get("nickname").asText());
                 session.sendMessage(new TextMessage(new ObjectMapper().writeValueAsString(jsonNode)));
                 break;
         }
@@ -70,7 +71,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
     private void createRoom(WebSocketSession session, JsonNode jsonNode) throws IOException {
         GameRoom gameRoom = new GameRoom(jsonNode.get("roomName").asText());
-        gameRoom.addPlayer(session);
+        gameRoom.addPlayer(session,String.valueOf(session.getAttributes().get("nickname")));
         gameRooms.add(gameRoom);
 
         // 방 목록을 모든 클라이언트에게 전송
@@ -80,7 +81,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private void joinRoom(WebSocketSession session, JsonNode jsonNode) throws IOException {
         for (GameRoom gameRoom : gameRooms) {
             if (gameRoom.getRoomName().equals(jsonNode.get("roomName").asText())) {
-                gameRoom.addPlayer(session);
+                gameRoom.addPlayer(session,String.valueOf(session.getAttributes().get("nickname")));
                 // 방 참가 결과를 해당 세션에 전송
                 session.sendMessage(new TextMessage(new ObjectMapper().writeValueAsString(jsonNode)));
                 // 방 목록을 모든 클라이언트에게 전송
@@ -89,7 +90,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
             }
         }
         String jsonPayload = objectMapper.writeValueAsString(
-                Map.of("type", "create", "roomName", null, "ErrorCode", "fail")
+                Map.of("type", "join", "roomName", "empty", "errorCode", "fail")
         );
         // 해당 이름의 방이 없을 경우 에러 메시지 전송
         session.sendMessage(new TextMessage(jsonPayload));
@@ -104,6 +105,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         );
         log.info("roomInfos ===> {}", jsonPayload);
         for (WebSocketSession session : sessions) {
+            log.info(session.getId());
             session.sendMessage(new TextMessage(jsonPayload));
         }
     }
