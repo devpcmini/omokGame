@@ -85,8 +85,22 @@
 
                     childFrame.src = '/omok/omokRoomList';
                     break;
+                case 'create' :
+                    childFrame.src = '/omok/omokMain';
+                    childFrame.addEventListener('load', () => {
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://192.168.45.206:8080');
+                    });
+                    break;
+                case 'join' :
+                    childFrame.src = '/omok/omokMain';
+                    childFrame.addEventListener('load', () => {
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://192.168.45.206:8080');
+                    });
+                    break;
                 default :
-                    childFrame.contentWindow.postMessage(receivedMessage, 'http://192.168.45.206:8080');
+                    childFrame.addEventListener('load', () => {
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://192.168.45.206:8080');
+                    });
                     break;
             }
         };

@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omok Game</title>
     <style>
+        .omok-main {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 50px;
+            padding: 20px;
+        }
+
         .omok-board {
             position: relative;
             width: 600px;
@@ -57,206 +64,122 @@
             position: absolute;
             background-color: #000;
         }
+
+        #roomName {
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        .omok-player {
+            width: 35%; /* Adjust the width as needed */
+            background-color: #f0f0f0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .player {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #ddd;
+            display: flex;
+            border: 2px solid;
+            justify-content: space-between;
+        }
+
+        .black {
+            border-color: #000; /* Black color for player */
+            color: #000;
+        }
+
+        .white {
+            border-color: #fff; /* White color for player */
+            color: #fff;
+        }
+
+        .nickname {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stone-color {
+            font-style: italic;
+        }
+
+        button {
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        #1234 {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+
+        #5678 {
+            background-color: #f44336;
+            color: white;
+            border: none;
+        }
     </style>
 </head>
 <body>
-<div class="omok-board">
-    <!-- 각 점에 클릭 이벤트를 가진 도트를 배치 -->
-    <div th:each="row : ${#numbers.sequence(0, 14)}">
-        <div th:each="col : ${#numbers.sequence(0, 14)}"
-             class="omok-dot"
-             th:attr="style='top: ' + (${row * 40 + 21}) + 'px; left: ' + (${col * 40 + 20}) + 'px;'"
-             th:onclick="'handleDotClick(this)'"
-             th:data-row="${row}"
-             th:data-col="${col}"
-        ></div>
+    <script src="/js/omokMain.js"></script>
+    <div id="roomName"></div>
+    <div class="omok-main">
+        <div class="omok-board">
+            <!-- 각 점에 클릭 이벤트를 가진 도트를 배치 -->
+            <div th:each="row : ${#numbers.sequence(0, 14)}">
+                <div th:each="col : ${#numbers.sequence(0, 14)}"
+                     class="omok-dot"
+                     th:attr="style='top: ' + (${row * 40 + 21}) + 'px; left: ' + (${col * 40 + 20}) + 'px;'"
+                     th:onclick="'handleDotClick(this)'"
+                     th:data-row="${row}"
+                     th:data-col="${col}"
+                ></div>
+            </div>
+
+            <!-- 가로선 그리기 -->
+            <div th:each="row : ${#numbers.sequence(0, 14)}"
+                 class="omok-line"
+                 th:style="'top: ' + (${row * 40 + 20}) + 'px; left: 20px; width: 560px; height: 1px;'"></div>
+
+            <!-- 세로선 그리기 -->
+            <div th:each="col : ${#numbers.sequence(0, 14)}"
+                 class="omok-line"
+                 th:style="'top: 20px; left: ' + (${col * 40 + 20}) + 'px; width: 1px; height: 560px;'"></div>
+        </div>
+        <div class="omok-player">
+            <div class="player black">
+                <div>
+                    <div class="player1 nickname"></div>
+                    <div class="stone-color">흑돌
+                        <div class="omok-stone black" style="transform: translate(190%, -93%) !important;
+                        width: 20px !important; height: 20px !important; cursor: default !important;"></div>
+                    </div>
+                </div>
+                <button id="player1" onclick="stoneColorSwitch(this)">이동</button>
+            </div>
+            <div class="player white">
+                <div>
+                    <div class="player2 nickname" style="color: #a5a5a5">empty user</div>
+                    <div class="stone-color">백돌
+                        <div class="omok-stone white" style="transform: translate(190%, -93%) !important;
+                        width: 20px !important; height: 20px !important; cursor: default !important;"></div>
+                    </div>
+                </div>
+                <button id="player2"  onclick="stoneColorSwitch(this)">이동</button>
+            </div>
+            <button id="1234">무르기</button>
+            <button id="5678">포기</button>
+        </div>
     </div>
-
-    <!-- 가로선 그리기 -->
-    <div th:each="row : ${#numbers.sequence(0, 14)}"
-         class="omok-line"
-         th:style="'top: ' + (${row * 40 + 20}) + 'px; left: 20px; width: 560px; height: 1px;'"></div>
-
-    <!-- 세로선 그리기 -->
-    <div th:each="col : ${#numbers.sequence(0, 14)}"
-         class="omok-line"
-         th:style="'top: 20px; left: ' + (${col * 40 + 20}) + 'px; width: 1px; height: 560px;'"></div>
-</div>
-<input type="text" id="roomNameInput" placeholder="Enter Room Name">
-<button onclick="createRoom()">Create Room</button>
-<button onclick="joinRoom()">Join Room</button>
-<button id="1234">무르기</button>
-<button id="5678">포기</button>
-<div id="rooms"></div>
-
-<script>
-    window.addEventListener('load', function() {
-        document.addEventListener("message", function (message) {
-            console.log(message);
-            if (message.data instanceof Object) {
-                const receivedMessage = message.data;
-                console.log(receivedMessage)
-                switch (receivedMessage.type) {
-                    case 'placingStone' :
-                        const stone = document.createElement('div');
-                        stone.className = 'omok-stone ' + receivedMessage.color + ' ' + seq++;
-                        stone.style.top = receivedMessage.row * 40 + 20 + 'px';
-                        stone.style.left = receivedMessage.col * 40 + 20 + 'px';
-                        stone.setAttribute("data-row", receivedMessage.row);
-                        stone.setAttribute("data-col", receivedMessage.col);
-                        document.querySelector('.omok-board').appendChild(stone);
-                        checkWin();
-                        break;
-                    case 'winner' :
-                        winner = receivedMessage.color;
-                        alert(winner + ' wins!');
-                        break;
-                    case 'create' :
-
-                        break;
-                    case 'join' :
-
-                        break;
-                    case 'rooms' :
-                        const rooms = document.querySelector('#rooms');
-                        rooms.innerHTML = '';
-                        receivedMessage.roomInfos.forEach(roomInfo => {
-                            // 방 목록에 추가될 요소 생성
-                            const roomElement = document.createElement('div');
-                            roomElement.classList.add('room');
-
-                            // 방 이름 표시
-                            const roomNameElement = document.createElement('span');
-                            roomNameElement.textContent = roomInfo.roomName;
-
-                            // 참여 인원 표시
-                            const participantsElement = document.createElement('span');
-                            participantsElement.textContent = '참여 인원: ' + roomInfo.playerCount;
-
-                            // 입장 버튼 생성
-                            const enterButton = document.createElement('button');
-                            enterButton.textContent = '입장';
-                            enterButton.classList.add('enter-button');
-                            enterButton.addEventListener('click', () => enterRoom(roomInfo.roomName));
-
-                            // 방 이름과 입장 버튼을 방 목록에 추가
-                            roomElement.appendChild(roomNameElement);
-                            roomElement.appendChild(participantsElement);
-                            roomElement.appendChild(enterButton);
-
-                            // 방 목록 컨테이너에 방 추가
-                            rooms.appendChild(roomElement);
-                        });
-                        break;
-                }
-            }
-        });
-    });
-
-    function postMessage(message){
-        window.parent.postMessage(message);
-    }
-
-    function enterRoom(roomName) {
-        // TODO: 방에 입장하는 로직 구현
-        console.log(`Entering room: ${roomName}`);
-    }
-
-    let seq = 0;
-    let winner;
-    // dot 클릭 이벤트
-    function handleDotClick(e) {
-        if(winner){
-            return;
-        }
-        const row = e.getAttribute("data-row");
-        const col = e.getAttribute("data-col");
-        const message = {type: 'placingStone', color: seq%2==0 ? 'black' : 'white' , row:row , col:col };
-        postMessage(message);
-    }
-
-    //가로,세로,대각선, 역대각선으로 다섯 개 이상의 돌이 연속되어 있는지 확인
-    function checkWin() {
-        const board = document.querySelector('.omok-board');
-        const stones = Array.from(board.querySelectorAll('.omok-stone'));
-
-        for (const stone of stones) {
-            const stoneColor = stone.classList.contains('black') ? 'black' : 'white';
-            const stonePosition = {
-                top: parseInt(stone.style.top),
-                left: parseInt(stone.style.left)
-            };
-
-            if (checkDirection(board, stoneColor, stonePosition, 1, 0) || // 가로
-                checkDirection(board, stoneColor, stonePosition, 0, 1) || // 세로
-                checkDirection(board, stoneColor, stonePosition, 1, 1) || // 대각선
-                checkDirection(board, stoneColor, stonePosition, 1, -1)) {  // 역대각선
-                const message = {type: 'winner', color: stoneColor };
-                postMessage(message);
-                return;
-            }
-        }
-    }
-
-    // 특정 위치에서 주어진 방향으로 가로,세로,대각선, 역대각선으로 다섯 개 이상의 돌이 연속되어 있는지 확인
-    function checkDirection(board, color, position, directionX, directionY) {
-        const consecutiveStones = [position];
-        for (let i = 1; i < 5; i++) {
-            const nextPosition = {
-                top: position.top + i * directionY * 40,
-                left: position.left + i * directionX * 40
-            };
-            const nextStone = findStoneAtPosition(board, nextPosition);
-            if (nextStone && nextStone.classList.contains(color)) {
-                consecutiveStones.push(nextPosition);
-            } else {
-                break;
-            }
-        }
-        for (let i = 1; i < 5; i++) {
-            const prevPosition = {
-                top: position.top - i * directionY * 40,
-                left: position.left - i * directionX * 40
-            };
-            const prevStone = findStoneAtPosition(board, prevPosition);
-            if (prevStone && prevStone.classList.contains(color)) {
-                consecutiveStones.push(prevPosition);
-            } else {
-                break;
-            }
-        }
-        if (consecutiveStones.length >= 5) {
-            return true;
-        }
-        return false;
-    }
-
-    // 주어진 위치에 있는 돌을 찾아 반환
-    function findStoneAtPosition(board, position) {
-        const stones = Array.from(board.querySelectorAll('.omok-stone'));
-        return stones.find(stone => {
-            const stonePosition = {
-                top: parseInt(stone.style.top),
-                left: parseInt(stone.style.left)
-            };
-            return stonePosition.top === position.top && stonePosition.left === position.left;
-        });
-    }
-
-    // 방 생성 함수
-    function createRoom() {
-        const roomName = document.getElementById('roomNameInput').value;
-        const createRoomMessage = { type: 'create', roomName: roomName };
-        postMessage(createRoomMessage);
-    }
-
-    // 방 참가 함수
-    function joinRoom() {
-        const roomName = document.getElementById('roomNameInput').value;
-        const joinRoomMessage = { type: 'join', roomName: roomName };
-        postMessage(joinRoomMessage);
-    }
-</script>
-
 </body>
 </html>
