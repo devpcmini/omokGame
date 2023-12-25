@@ -18,13 +18,12 @@ public class GameRoom {
     public String getRoomName() {
         return roomName;
     }
-
     public Set<PlayerInfo> getPlayers() {
         return players;
     }
 
-    public void addPlayer(WebSocketSession session, String nickname) {
-        PlayerInfo playerInfo = new PlayerInfo(session, nickname);
+    public void addPlayer(WebSocketSession session, String nickname, String stoneColor) {
+        PlayerInfo playerInfo = new PlayerInfo(session, nickname, stoneColor);
         players.add(playerInfo);
         session.getAttributes().put("playerInfo", playerInfo);
     }
@@ -74,10 +73,12 @@ public class GameRoom {
     public static class PlayerInfo {
         private WebSocketSession session;
         private String nickname;
+        private String stoneColor;
 
-        public PlayerInfo(WebSocketSession session, String nickname) {
+        public PlayerInfo(WebSocketSession session, String nickname, String stoneColor) {
             this.session = session;
             this.nickname = nickname;
+            this.stoneColor = stoneColor;
         }
 
         public WebSocketSession getSession() {
@@ -86,6 +87,9 @@ public class GameRoom {
 
         public String getNickname() {
             return nickname;
+        }
+        public String getStoneColor() {
+            return stoneColor;
         }
     }
 }

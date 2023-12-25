@@ -2,7 +2,6 @@ package dev.pcm.omokgame.webSocket;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.util.JSONPObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -20,39 +19,45 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
     private static Set<WebSocketSession> sessions = new HashSet<>();
     private static Set<GameRoom> gameRooms = new HashSet<>();
-    private static ObjectMapper objectMapper = new ObjectMapper();;
+    private static ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        // 클라이언트 연결이 성공했을 때의 동작
-        log.info("session add ==> {}", session );
+        log.info("Session added ==> {}", session);
         sessions.add(session);
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        // 클라이언트로부터 메시지를 받았을 때의 동작
         String payload = message.getPayload();
-        log.info("payload ==> {}", payload);
-        // 받은 메시지를 다른 클라이언트들에게 브로드캐스트
-        handleMessage(session,payload);
+        log.info("Received payload ==> {}", payload);
+
+        try {
+            handleMessage(session, payload);
+        } catch (IOException e) {
+            log.error("Error handling message", e);
+        }
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        // 클라이언트 연결이 종료되었을 때의 동작
-        log.info("session remove ==> {}", session );
-        sessions.remove(session);
-        // 연결이 종료된 세션을 모든 게임방에서 제거
-        for (GameRoom gameRoom : gameRooms) {
-            gameRoom.removePlayer(session);
+        log.info("Session removed ==> {}", session);
+        GameRoom.PlayerInfo player = (GameRoom.PlayerInfo) session.getAttributes().get("playerInfo");
+        if (player != null) {
+            GameRoom room = getRoomByPlayer(player);
+            if (room != null) {
+                room.removePlayer(player.getSession());
+                if (room.getPlayers().isEmpty()) {
+                    gameRooms.remove(room);
+                }
+            }
         }
+        sessions.remove(session);
+        broadcastRoomList();
     }
 
     private void handleMessage(WebSocketSession session, String payload) throws IOException {
-        // 클라이언트로부터 받은 메시지를 처리
         JsonNode jsonNode = objectMapper.readTree(payload);
-
         String type = jsonNode.get("type").asText();
 
         switch (type) {
@@ -63,51 +68,100 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 joinRoom(session, jsonNode);
                 break;
             case "login":
-                session.getAttributes().put("nickname",jsonNode.get("nickname").asText());
-                session.sendMessage(new TextMessage(new ObjectMapper().writeValueAsString(jsonNode)));
+                handleLogin(session, jsonNode);
                 break;
+            case "placingStone":
+                handlePlacingStone(session, jsonNode);
+                break;
+            default:
+                log.warn("Unhandled message type: {}", type);
         }
+    }
+
+    private void handleLogin(WebSocketSession session, JsonNode jsonNode) throws IOException {
+        session.getAttributes().put("nickname", jsonNode.get("nickname").asText());
+        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(jsonNode)));
+        broadcastRoomList();
+    }
+
+    private void handlePlacingStone(WebSocketSession session, JsonNode jsonNode) throws IOException {
+        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(jsonNode)));
     }
 
     private void createRoom(WebSocketSession session, JsonNode jsonNode) throws IOException {
         GameRoom gameRoom = new GameRoom(jsonNode.get("roomName").asText());
-        gameRoom.addPlayer(session,String.valueOf(session.getAttributes().get("nickname")));
+        gameRoom.addPlayer(session, session.getAttributes().get("nickname").toString(),
+                jsonNode.get("stoneColor").asText());
         gameRooms.add(gameRoom);
-
-        // 방 목록을 모든 클라이언트에게 전송
+        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(jsonNode)));
         broadcastRoomList();
     }
 
     private void joinRoom(WebSocketSession session, JsonNode jsonNode) throws IOException {
+        String roomName = jsonNode.get("roomName").asText();
+
         for (GameRoom gameRoom : gameRooms) {
-            if (gameRoom.getRoomName().equals(jsonNode.get("roomName").asText())) {
-                gameRoom.addPlayer(session,String.valueOf(session.getAttributes().get("nickname")));
-                // 방 참가 결과를 해당 세션에 전송
-                session.sendMessage(new TextMessage(new ObjectMapper().writeValueAsString(jsonNode)));
-                // 방 목록을 모든 클라이언트에게 전송
+            if (gameRoom.getRoomName().equals(roomName)) {
+                GameRoom.PlayerInfo playerInfo = gameRoom.getPlayers().iterator().next();
+                String stoneColor = playerInfo.getStoneColor() == "black" ? "white"
+                        : playerInfo.getStoneColor();
+                gameRoom.addPlayer(session, session.getAttributes().get("nickname").toString(),stoneColor);
+                sendJoinResult(session, gameRoom);
                 broadcastRoomList();
                 return;
             }
         }
-        String jsonPayload = objectMapper.writeValueAsString(
-                Map.of("type", "join", "roomName", "empty", "errorCode", "fail")
-        );
-        // 해당 이름의 방이 없을 경우 에러 메시지 전송
-        session.sendMessage(new TextMessage(jsonPayload));
+
+        sendJoinResult(session, null);
+    }
+
+    private void sendJoinResult(WebSocketSession session, GameRoom gameRoom) throws IOException {
+        if (gameRoom != null) {
+            Set<GameRoom.RoomInfo> roomInfos = gameRooms.stream()
+                    .map(GameRoom::getRoomInfo)
+                    .collect(Collectors.toSet());
+
+            GameRoom.RoomInfo findRoom = roomInfos.stream()
+                    .filter(info -> gameRoom.getRoomName().equals(info.getRoomName()))
+                    .findFirst()
+                    .orElse(null);
+
+            String jsonPayload = objectMapper.writeValueAsString(
+                    Map.of("type", "join", "roomInfos", findRoom)
+            );
+
+            session.sendMessage(new TextMessage(jsonPayload));
+        } else {
+            String jsonPayload = objectMapper.writeValueAsString(
+                    Map.of("type", "join", "roomName", "empty", "errorCode", "fail")
+            );
+
+            session.sendMessage(new TextMessage(jsonPayload));
+        }
     }
 
     private void broadcastRoomList() throws IOException {
         Set<GameRoom.RoomInfo> roomInfos = gameRooms.stream()
                 .map(GameRoom::getRoomInfo)
-                .collect(Collectors.toSet());;
+                .collect(Collectors.toSet());
+
         String jsonPayload = objectMapper.writeValueAsString(
                 Map.of("type", "rooms", "roomInfos", roomInfos)
         );
-        log.info("roomInfos ===> {}", jsonPayload);
+
+        log.info("Broadcasting room list ==> {}", jsonPayload);
+
         for (WebSocketSession session : sessions) {
-            log.info(session.getId());
             session.sendMessage(new TextMessage(jsonPayload));
         }
     }
+
+    private GameRoom getRoomByPlayer(GameRoom.PlayerInfo player) {
+        return gameRooms.stream()
+                .filter(room -> room.getPlayers().contains(player))
+                .findFirst()
+                .orElse(null);
+    }
 }
+
 
