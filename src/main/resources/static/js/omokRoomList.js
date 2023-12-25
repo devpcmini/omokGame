@@ -83,7 +83,7 @@ function enterRoom(roomName) {
 // 방 생성 함수
 function createRoom() {
     const roomName = document.getElementById('roomNameInput').value;
-    const createRoomMessage = {type: 'create', roomName: roomName};
+    const createRoomMessage = {type: 'create', roomName: roomName, stoneColor : "black"};
     ParentToMessage(createRoomMessage);
 }
 
