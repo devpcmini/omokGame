@@ -5,21 +5,26 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import javax.servlet.http.HttpServletRequest;
+
 @Controller
 @RequestMapping("/omok")
 public class OmokController {
 
     @GetMapping("/main")
-    public String showOmokPage(Model model) {
+    public String showOmokPage(HttpServletRequest request,Model model) {
+        model.addAttribute("ip",request.getRemoteAddr());
         return "main";
     }
     @GetMapping("/omokRoomList")
-    public String omokRoomList(Model model) {
+    public String omokRoomList(HttpServletRequest request, Model model) {
+        model.addAttribute("ip",request.getRemoteAddr());
         return "omokRoomList";
     }
 
     @GetMapping("/omokMain")
-    public String showOmokMainPage(Model model) {
+    public String showOmokMainPage(HttpServletRequest request, Model model) {
+        model.addAttribute("ip",request.getRemoteAddr());
         return "omokMain";
     }
 }
