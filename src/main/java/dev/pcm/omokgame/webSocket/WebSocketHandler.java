@@ -42,6 +42,12 @@ public class WebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         log.info("Session removed ==> {}", session);
+        getOutTheRoom(session);
+        sessions.remove(session);
+        broadcastRoomList();
+    }
+
+    private void getOutTheRoom(WebSocketSession session) throws IOException {
         GameRoom.PlayerInfo player = (GameRoom.PlayerInfo) session.getAttributes().get("playerInfo");
         if (player != null) {
             GameRoom room = getRoomByPlayer(player);
@@ -52,7 +58,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 }
             }
         }
-        sessions.remove(session);
         broadcastRoomList();
     }
 
@@ -73,6 +78,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
             case "placingStone":
                 handlePlacingStone(session, jsonNode);
                 break;
+            case "getOut" :
+                getOutTheRoom(session);
+                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(jsonNode)));
             default:
                 log.warn("Unhandled message type: {}", type);
         }
