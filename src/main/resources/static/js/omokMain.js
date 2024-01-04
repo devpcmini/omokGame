@@ -152,3 +152,9 @@ function userCheck(){
         document.querySelector('#player2').style.display = '';
     }
 }
+
+function fnGetOut(){
+    const message = {type: 'getOut'};
+    ParentToMessage(message);
+};
+
