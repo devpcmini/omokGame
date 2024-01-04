@@ -73,6 +73,7 @@
 
         socket.onmessage = function(event) {
             // 서버로부터 수신된 메시지 처리 (게임 상태 업데이트 등)
+
             const receivedMessage = JSON.parse(event.data);
             // 플레이어 간 통신 메시지 처리 로직...
             console.log(receivedMessage);
