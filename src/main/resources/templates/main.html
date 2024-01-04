@@ -99,6 +99,11 @@
                         childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
                     });
                     break;
+                case 'getOut' :
+                    childFrame.src = '/omok/omokRoomList';
+                    childFrame.addEventListener('load', () => {
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
+                    });
                 default :
                     childFrame.addEventListener('load', () => {
                         childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
