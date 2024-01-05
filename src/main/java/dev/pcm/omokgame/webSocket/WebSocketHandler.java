@@ -41,10 +41,11 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        log.info("Session removed ==> {}", session);
-        getOutTheRoom(session);
-        sessions.remove(session);
-        broadcastRoomList();
+        synchronized (sessions) {
+            log.info("Session removed ==> {}", session);
+            getOutTheRoom(session);
+            sessions.remove(session);
+        }
     }
 
     private void getOutTheRoom(WebSocketSession session) throws IOException {
@@ -58,7 +59,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 }
             }
         }
-        broadcastRoomList();
+        broadcastRoomList(session);
     }
 
     private void handleMessage(WebSocketSession session, String payload) throws IOException {
@@ -81,6 +82,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
             case "getOut" :
                 getOutTheRoom(session);
                 session.sendMessage(new TextMessage(objectMapper.writeValueAsString(jsonNode)));
+                break;
             default:
                 log.warn("Unhandled message type: {}", type);
         }
@@ -89,7 +91,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private void handleLogin(WebSocketSession session, JsonNode jsonNode) throws IOException {
         session.getAttributes().put("nickname", jsonNode.get("nickname").asText());
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(jsonNode)));
-        broadcastRoomList();
+        broadcastRoomList(null);
     }
 
     private void handlePlacingStone(WebSocketSession session, JsonNode jsonNode) throws IOException {
@@ -102,7 +104,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 jsonNode.get("stoneColor").asText());
         gameRooms.add(gameRoom);
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(jsonNode)));
-        broadcastRoomList();
+        broadcastRoomList(null);
     }
 
     private void joinRoom(WebSocketSession session, JsonNode jsonNode) throws IOException {
@@ -115,7 +117,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                         : playerInfo.getStoneColor();
                 gameRoom.addPlayer(session, session.getAttributes().get("nickname").toString(),stoneColor);
                 sendJoinResult(session, gameRoom);
-                broadcastRoomList();
+                broadcastRoomList(null);
                 return;
             }
         }
@@ -148,7 +150,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void broadcastRoomList() throws IOException {
+    private void broadcastRoomList(WebSocketSession session) throws IOException {
         Set<GameRoom.RoomInfo> roomInfos = gameRooms.stream()
                 .map(GameRoom::getRoomInfo)
                 .collect(Collectors.toSet());
@@ -159,8 +161,14 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
         log.info("Broadcasting room list ==> {}", jsonPayload);
 
-        for (WebSocketSession session : sessions) {
-            session.sendMessage(new TextMessage(jsonPayload));
+        for (WebSocketSession sess : sessions) {
+            if(session != null) {
+                if (!sess.getId().equals(session.getId())) {
+                    sess.sendMessage(new TextMessage(jsonPayload));
+                }
+            } else {
+                sess.sendMessage(new TextMessage(jsonPayload));
+            }
         }
     }
 
