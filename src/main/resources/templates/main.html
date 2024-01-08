@@ -73,12 +73,14 @@
 
         socket.onmessage = function(event) {
             // 서버로부터 수신된 메시지 처리 (게임 상태 업데이트 등)
-
             const receivedMessage = JSON.parse(event.data);
             // 플레이어 간 통신 메시지 처리 로직...
             console.log(receivedMessage);
             childFrame = document.getElementById('frameElement');
             switch (receivedMessage.type){
+                case 'winner':
+                    childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
+                    break;
                 case 'login' :
                     document.querySelector('#nickname').style.display = 'none';
                     document.querySelector('#loginBtn').style.display = 'none';
@@ -98,6 +100,9 @@
                     childFrame.addEventListener('load', () => {
                         childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
                     });
+                    break;
+                case 'placingStone' :
+                    childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
                     break;
                 case 'getOut' :
                     childFrame.src = '/omok/omokRoomList';

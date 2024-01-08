@@ -83,13 +83,15 @@ function enterRoom(roomName) {
 // 방 생성 함수
 function createRoom() {
     const roomName = document.getElementById('roomNameInput').value;
-    const createRoomMessage = {type: 'create', roomName: roomName, stoneColor : "black"};
+    const createRoomMessage = {type: 'create', roomName: roomName,
+        nickName : top.document.querySelector('#loginNickname').textContent.replace('NickName : ','') ,stoneColor : "black"};
     ParentToMessage(createRoomMessage);
 }
 
 // 방 참가 함수
 function joinRoom() {
     const roomName = document.getElementById('roomNameInput').value;
-    const joinRoomMessage = {type: 'join', roomName: roomName};
+    const joinRoomMessage = {type: 'join', roomName: roomName,
+        nickName : top.document.querySelector('#loginNickname').textContent.replace('NickName : ','')};
     ParentToMessage(joinRoomMessage);
 }

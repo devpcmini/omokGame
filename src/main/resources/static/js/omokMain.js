@@ -2,10 +2,15 @@ let roomName;
 let nickName;
 
 window.addEventListener("message", function (message) {
+    console.log(message);
     if (message.data instanceof Object) {
         const receivedMessage = message.data;
+        const roomNameEle = document.querySelector('#roomName');
         switch (receivedMessage.type) {
             case 'placingStone' :
+                if(!document.querySelector('.turn').classList.contains(receivedMessage.color)){
+                    return;
+                }
                 const stone = document.createElement('div');
                 stone.className = 'omok-stone ' + receivedMessage.color + ' ' + seq++;
                 stone.style.top = receivedMessage.row * 40 + 20 + 'px';
@@ -13,6 +18,13 @@ window.addEventListener("message", function (message) {
                 stone.setAttribute("data-row", receivedMessage.row);
                 stone.setAttribute("data-col", receivedMessage.col);
                 document.querySelector('.omok-board').appendChild(stone);
+                if(receivedMessage.color == "black"){
+                    document.querySelector('.player.black').classList.remove('turn');
+                    document.querySelector('.player.white').classList.add('turn');
+                } else {
+                    document.querySelector('.player.white').classList.remove('turn');
+                    document.querySelector('.player.black').classList.add('turn')
+                }
                 checkWin();
                 break;
             case 'winner' :
@@ -20,7 +32,6 @@ window.addEventListener("message", function (message) {
                 alert(winner + ' wins!');
                 break;
             case 'create' :
-                const roomNameEle = document.querySelector('#roomName');
                 roomName =receivedMessage.roomName;
                 roomNameEle.textContent = 'room Name : ' + roomName;
                 nickName = receivedMessage.nickname;
@@ -32,12 +43,17 @@ window.addEventListener("message", function (message) {
                 userCheck();
                 break;
             case 'join' :
+                roomName = receivedMessage.roomInfos.roomName;
+                roomNameEle.textContent = 'room Name : ' + roomName;
                 nickName = receivedMessage.nickname;
                 if(document.querySelector('.player1').textContent != 'empty user'){
                     document.querySelector('.player2').textContent = nickName;
                 } else {
                     document.querySelector('.player1').textContent = nickName;
                 }
+                break;
+            case 'stoneColorSwitch' :
+
                 break;
         }
     }
