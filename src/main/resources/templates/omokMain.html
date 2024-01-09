@@ -135,56 +135,59 @@
     </style>
 </head>
 <body>
+    <link href="/css/style.css" rel="stylesheet" type="text/css" id="custom-stylesheet"/>
     <script src="/js/omokMain.js"></script>
-    <div id="roomName"></div>
-    <div class="omok-main">
-        <div class="omok-board">
-            <!-- 각 점에 클릭 이벤트를 가진 도트를 배치 -->
-            <div th:each="row : ${#numbers.sequence(0, 14)}">
-                <div th:each="col : ${#numbers.sequence(0, 14)}"
-                     class="omok-dot"
-                     th:attr="style='top: ' + (${row * 40 + 21}) + 'px; left: ' + (${col * 40 + 20}) + 'px;'"
-                     th:onclick="'handleDotClick(this)'"
-                     th:data-row="${row}"
-                     th:data-col="${col}"
-                ></div>
-            </div>
+<!--    <div id="roomName"></div>-->
+<!--    <div class="omok-main">-->
+<!--        <div class="omok-board">-->
+<!--            &lt;!&ndash; 각 점에 클릭 이벤트를 가진 도트를 배치 &ndash;&gt;-->
+<!--            <div th:each="row : ${#numbers.sequence(0, 14)}">-->
+<!--                <div th:each="col : ${#numbers.sequence(0, 14)}"-->
+<!--                     class="omok-dot"-->
+<!--                     th:attr="style='top: ' + (${row * 40 + 21}) + 'px; left: ' + (${col * 40 + 20}) + 'px;'"-->
+<!--                     th:onclick="'handleDotClick(this)'"-->
+<!--                     th:data-row="${row}"-->
+<!--                     th:data-col="${col}"-->
+<!--                ></div>-->
+<!--            </div>-->
 
-            <!-- 가로선 그리기 -->
-            <div th:each="row : ${#numbers.sequence(0, 14)}"
-                 class="omok-line"
-                 th:style="'top: ' + (${row * 40 + 20}) + 'px; left: 20px; width: 560px; height: 1px;'"></div>
+<!--            &lt;!&ndash; 가로선 그리기 &ndash;&gt;-->
+<!--            <div th:each="row : ${#numbers.sequence(0, 14)}"-->
+<!--                 class="omok-line"-->
+<!--                 th:style="'top: ' + (${row * 40 + 20}) + 'px; left: 20px; width: 560px; height: 1px;'"></div>-->
 
-            <!-- 세로선 그리기 -->
-            <div th:each="col : ${#numbers.sequence(0, 14)}"
-                 class="omok-line"
-                 th:style="'top: 20px; left: ' + (${col * 40 + 20}) + 'px; width: 1px; height: 560px;'"></div>
-        </div>
-        <div class="omok-player">
-            <div class="player black">
-                <div>
-                    <div class="player1 nickname"></div>
-                    <div class="stone-color">흑돌
-                        <div class="omok-stone black" style="transform: translate(190%, -93%) !important;
-                        width: 20px !important; height: 20px !important; cursor: default !important;"></div>
-                    </div>
-                </div>
-                <button id="player1" onclick="stoneColorSwitch(this)">이동</button>
-            </div>
-            <div class="player white">
-                <div>
-                    <div class="player2 nickname" style="color: #a5a5a5">empty user</div>
-                    <div class="stone-color">백돌
-                        <div class="omok-stone white" style="transform: translate(190%, -93%) !important;
-                        width: 20px !important; height: 20px !important; cursor: default !important;"></div>
-                    </div>
-                </div>
-                <button id="player2"  onclick="stoneColorSwitch(this)">이동</button>
-            </div>
-            <button id="1234">무르기</button>
-            <button id="5678">포기</button>
-            <button id="getOut" onclick="fnGetOut()">나가기</button>
-        </div>
-    </div>
+<!--            &lt;!&ndash; 세로선 그리기 &ndash;&gt;-->
+<!--            <div th:each="col : ${#numbers.sequence(0, 14)}"-->
+<!--                 class="omok-line"-->
+<!--                 th:style="'top: 20px; left: ' + (${col * 40 + 20}) + 'px; width: 1px; height: 560px;'"></div>-->
+<!--        </div>-->
+<!--        <div class="omok-player">-->
+<!--            <div class="player black">-->
+<!--                <div>-->
+<!--                    <div class="player1 nickname"></div>-->
+<!--                    <div class="stone-color">흑돌-->
+<!--                        <div class="omok-stone black" style="transform: translate(190%, -93%) !important;-->
+<!--                        width: 20px !important; height: 20px !important; cursor: default !important;"></div>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <button id="player1" onclick="stoneColorSwitch(this)">이동</button>-->
+<!--            </div>-->
+<!--            <div class="player white">-->
+<!--                <div>-->
+<!--                    <div class="player2 nickname" style="color: #a5a5a5">empty user</div>-->
+<!--                    <div class="stone-color">백돌-->
+<!--                        <div class="omok-stone white" style="transform: translate(190%, -93%) !important;-->
+<!--                        width: 20px !important; height: 20px !important; cursor: default !important;"></div>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <button id="player2"  onclick="stoneColorSwitch(this)">이동</button>-->
+<!--            </div>-->
+<!--            <button id="1234">무르기</button>-->
+<!--            <button id="5678">포기</button>-->
+<!--            <button id="getOut" onclick="fnGetOut()">나가기</button>-->
+<!--        </div>-->
+<!--    </div>-->
+<div class="game-panel">
+</div>
 </body>
 </html>

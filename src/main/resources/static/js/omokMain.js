@@ -1,5 +1,9 @@
 let roomName;
 let nickName;
+let inBoard = false;
+let myTurn = false;
+let coord = {};
+let isGameEnd = false;
 
 window.addEventListener("message", function (message) {
     console.log(message);
@@ -7,6 +11,12 @@ window.addEventListener("message", function (message) {
         const receivedMessage = message.data;
         const roomNameEle = document.querySelector('#roomName');
         switch (receivedMessage.type) {
+            case 'player_select' :
+                myTurn = true;
+                break;
+            case 'player_change' :
+                myTurn = false;
+                break;
             case 'placingStone' :
                 if(!document.querySelector('.turn').classList.contains(receivedMessage.color)){
                     return;
@@ -54,6 +64,9 @@ window.addEventListener("message", function (message) {
                 break;
             case 'stoneColorSwitch' :
 
+                break;
+            case 'room_enter' :
+                GamePanel(receivedMessage.data.name, receivedMessage.data.blackPlayer, receivedMessage.data.whitePlayer);
                 break;
         }
     }
@@ -174,3 +187,219 @@ function fnGetOut(){
     ParentToMessage(message);
 };
 
+
+function GamePanel(roomname, blackPlayer, whitePlayer) {
+    const message = [];
+
+    // socket.on("message", (msg) => {
+    //     message.push(msg);
+    //     render();
+    // });
+
+    function Player({ name, onClick }) {
+        return (
+            "<div class='game-panel__playerinfo'>" +
+            (name !== ""
+                ? "<p class='game-panel__playername'>" + name + "</p>"
+                : "<button class='game-panel__playerselect' onclick='" +
+                onClick +
+                "'>참가</button>") +
+            "</div>"
+        );
+    }
+
+    function MessageLine(msg) {
+        return msg + "<br />";
+    }
+
+    function blackPlayerCallback() {
+        ParentToMessage({type: 'player_change', data : 'black'});
+    }
+
+    function whitePlayerCallback() {
+        ParentToMessage({type: 'player_change', data : 'white'});
+    }
+
+    function render() {
+        const gamePanel = document.querySelector(".game-panel");
+        gamePanel.innerHTML = `
+      <div class="game-panel__main">
+        <h3 class="game-panel__title">${roomname}</h3>
+        <div class="game-panel__players">
+          <div class="game-panel__player">
+            <h4 class="game-panel__playercolor game-panel__playercolor--black">
+              Black
+            </h4>
+            ${Player({ name: blackPlayer, onClick: "blackPlayerCallback()" })}
+          </div>
+          <div class="game-panel__player">
+            <h4 class="game-panel__playercolor game-panel__playercolor--white">White</h4>
+            ${Player({ name: whitePlayer, onClick: "whitePlayerCallback()" })}
+          </div>
+        </div>
+        <div class="game-panel__message">
+          <p>${message.map(MessageLine).join("")}</p>
+        </div>
+      </div>
+      <div class="game-panel__buttons">
+        <button class="game-panel__button" onclick="ParentToMessage({type: 'player_change', data: 'spectator' })">관전하기</button>
+        <button class="game-panel__button" onclick="ParentToMessage({type: 'room_leave'})">방 나가기</button>
+      </div>
+    `;
+    }
+
+    render();
+}
+
+function handleBoardEnter() {
+    inBoard = true;
+}
+
+function handleBoardLeave() {
+    inBoard = false;
+}
+
+function handleBoardMove(thisCoord) {
+    if (takes.find((c) => c.x === thisCoord.x && c.y === thisCoord.y) === undefined) {
+        coord = thisCoord;
+    }
+}
+
+function handleBoardSelect() {
+    myTurn = false;
+    console.log(`Select [${coord.x},${coord.y}]`);
+    ParentToMessage({type: 'player_selected', data : coord});
+}
+
+function OmokBoard({ takes }) {
+    function render() {
+        const omokBoard = document.querySelector(".omokboard");
+        omokBoard.innerHTML = `
+      ${myTurn ? CoordSelectArea(handleBoardEnter,handleBoardMove,handleBoardLeave,handleBoardSelect) : ""}
+      ${takes.map((takes, index) => MemoriedStone(index))}
+      ${takes.length > 0 ? MemoriedStone(takes.length - 1, true) : ""}
+      ${myTurn && inBoard ? MemoriedStone(takes.length % 2 === 0 ? "black" : "white", "hint") : ""}
+    `;
+    }
+    render();
+}
+
+function createStone({ type, x, y }) {
+    let material = "";
+    type.forEach((m) => {
+        switch (m) {
+            case "black":
+                material += " omokboard__stone--black";
+                break;
+            case "white":
+                material += " omokboard__stone--white";
+                break;
+            case "hint":
+                material += " omokboard__stone--hint";
+                break;
+            case "prev":
+                material += " omokboard__stone--prev";
+                break;
+        }
+    });
+
+    const stoneElement = document.createElement("div");
+    stoneElement.className = `omokboard__stone ${material}`;
+    stoneElement.style.left = `${x * BOARD_SPACE + BOARD_OFFSET}%`;
+    stoneElement.style.top = `${y * BOARD_SPACE + BOARD_OFFSET}%`;
+    stoneElement.setAttribute("key", `${x}${y}`);
+
+    return stoneElement;
+}
+
+const MemoriedStone = (()=> {
+    const memoCache = {};
+    function memoizeStone(props) {
+        const key = JSON.stringify(props);
+        if (memoCache[key]) {
+            return memoCache[key];
+        } else {
+            const stoneElement = createStone(props);
+            memoCache[key] = stoneElement;
+            return stoneElement;
+        }
+    }
+    return memoizeStone;
+})();
+
+function CoordSelectArea(onBoardEnter,onBoardMove,onBoardLeave,onBoardSelect) {
+    function getCoord(event) {
+        let coordX = 0;
+        let coordY = 0;
+
+        if (!isMobile) {
+            const percentX = (event.offsetX * 100.0) / event.target.clientWidth;
+            const percentY = (event.offsetY * 100.0) / event.target.clientHeight;
+
+            coordX = parseInt((percentX - BOARD_OFFSET) / BOARD_SPACE + 0.5);
+            coordY = parseInt((percentY - BOARD_OFFSET) / BOARD_SPACE + 0.5);
+        } else {
+            const bcr = event.target.getBoundingClientRect();
+            const x = event.touches[0].clientX - bcr.x;
+            const y = event.touches[0].clientY - bcr.y;
+
+            const percentX = (x * 100.0) / event.target.clientWidth;
+            const percentY = (y * 100.0) / event.target.clientHeight;
+            coordX = parseInt((percentX - BOARD_OFFSET) / BOARD_SPACE + 0.5);
+            coordY = parseInt((percentY - BOARD_OFFSET) / BOARD_SPACE - 1.5);
+        }
+
+        if (coordX < 0) coordX = 0;
+        if (coordY < 0) coordY = 0;
+
+        if (coordX > 18) coordX = 18;
+        if (coordY > 18) coordY = 18;
+
+        return {
+            x: coordX,
+            y: coordY,
+        };
+    }
+
+    function onMouseEnter() {
+        onBoardEnter();
+    }
+
+    function onMouseMove(event) {
+        onBoardMove(getCoord(event));
+    }
+
+    function onMouseLeave() {
+        onBoardLeave();
+    }
+
+    function onMouseClick() {
+        onBoardSelect();
+    }
+
+    function onTouchStart(event) {
+        onBoardEnter();
+        onBoardMove(getCoord(event));
+    }
+
+    function onTouchMove(event) {
+        onBoardMove(getCoord(event));
+    }
+
+    function onTouchEnd(event) {
+        onBoardLeave();
+        onBoardSelect();
+    }
+
+    const omokboardCoord = document.createElement('div');
+    omokboardCoord.className = "omokboard__coord";
+    omokboardCoord.addEventListener("mouseenter", onMouseEnter);
+    omokboardCoord.addEventListener("mousemove", onMouseMove);
+    omokboardCoord.addEventListener("mouseleave", onMouseLeave);
+    omokboardCoord.addEventListener("click", onMouseClick);
+    omokboardCoord.addEventListener("touchstart", onTouchStart);
+    omokboardCoord.addEventListener("touchmove", onTouchMove);
+    omokboardCoord.addEventListener("touchend", onTouchEnd);
+
+    return omokboardCoord;
+}
