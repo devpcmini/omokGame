@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omok Game</title>
-    <style>
+    <!-- <style>
         .room {
             border: 1px solid #ccc;
             padding: 10px;
@@ -53,13 +53,26 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             z-index: 1;
         }
-    </style>
+    </style> -->
 </head>
 <body>
+    <link href="/css/style.css" rel="stylesheet" type="text/css" id="custom-stylesheet"/>
     <script src="/js/omokRoomList.js"></script>
-    <input type="text" id="roomNameInput" placeholder="Enter Room Name">
-    <button onclick="createRoom()">Create Room</button>
-    <button onclick="joinRoom()">Join Room</button>
-    <div id="rooms"></div>
+    <div id="waiting-room" class="waiting-room">
+        <div className="newroom">
+            <form className="newroom__form" onSubmit="handleNewRoom(event)">
+                <input className="newroom__input" type="text" name="roomname" placeholder="방 이름"></input>
+                <button className="newroom__submit">방 만들기</button>
+            </form>
+        </div>
+        <div id="room-list" class="room-list">
+            <h3>방 목록</h3>
+            <ul id="room-list-container" class="room-list__container"></ul>
+        </div>
+    </div>
+<!--    <input type="text" id="roomNameInput" placeholder="Enter Room Name">-->
+<!--    <button onclick="createRoom()">Create Room</button>-->
+<!--    <button onclick="joinRoom()">Join Room</button>-->
+<!--    <div id="rooms"></div>-->
 </body>
 </html>

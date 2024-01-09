@@ -1,19 +1,10 @@
-function showTooltip() {
-    const tooltip = document.getElementById("tooltip");
-    console.log("showTooltip");
-    tooltip.style.display = "block";
-}
-
-function hideTooltip() {
-    const tooltip = document.getElementById("tooltip");
-    console.log("hideTooltip");
-    tooltip.style.display = "none";
-}
-
 window.addEventListener("message", function (message) {
     if (message.data instanceof Object) {
         const receivedMessage = message.data;
         switch (receivedMessage.type) {
+            case 'room_list' :
+                RoomList({ roomList: receivedMessage.data.map(room => ({ name: room.name }))});
+                break;
             case 'create' :
                 break;
             case 'join' :
@@ -94,4 +85,83 @@ function joinRoom() {
     const joinRoomMessage = {type: 'join', roomName: roomName,
         nickName : top.document.querySelector('#loginNickname').textContent.replace('NickName : ','')};
     ParentToMessage(joinRoomMessage);
+}
+//
+// const roomListElement = document.getElementById('room-list-container');
+//
+// function renderRoomList(list) {
+//     roomListElement.innerHTML = list.map(renderRoomItem).join('');
+// }
+//
+// function renderRoomItem(room) {
+//     return `<li>${room}</li>`;
+// }
+//
+// function updateDocumentTitle(count) {
+//     document.title = `대기실: 참가 가능한 방 ${count}개`;
+// }
+//
+// function createNewRoom() {
+//     const newRoomInput = document.getElementById('new-room-input');
+//     const newRoomName = newRoomInput.value;
+//     if (newRoomName) {
+//         socket.send(JSON.stringify({ type: 'create_room', name: newRoomName }));
+//     }
+// }
+//
+// function handleRoomList(event) {
+//     const list = JSON.parse(event.data);
+//     console.log(list);
+//     renderRoomList(list);
+//     updateDocumentTitle(list.length);
+// }
+//
+// socket.addEventListener('message', handleRoomList);
+//
+// socket.addEventListener('open', () => {
+//     ParentToMessage({ type: 'room_list' });
+// });
+
+function handleNewRoom(event){
+    event.preventDefault();
+    const name = event.target.roomname.value;
+    event.target.roomname.value = "";
+    if (name.length == 0) {
+        return;
+    }
+    const joinRoomMessage = {type: 'room_new', name: name};
+    ParentToMessage(joinRoomMessage);
+}
+
+function RoomList(props) {
+    const roomList = props.roomList;
+    const ul = document.querySelector('#room-list-container');
+    ul.innerHTML = '';
+    roomList.forEach(function (roomItem) {
+        const li = RoomItem(roomItem);
+        ul.appendChild(li);
+    });
+}
+function RoomItem(room) {
+    const handleEnterRoom = () => {
+        // socket.emit("room_enter", room.name);
+        console.log("Entering room:", room.name);
+    };
+
+    const li = document.createElement('li');
+    li.className = 'room-list__item';
+
+    const p = document.createElement('p');
+    p.className = 'room-list__name';
+    p.textContent = room.name;
+
+    const button = document.createElement('button');
+    button.className = 'room-list__enter';
+    button.textContent = '입장하기';
+    button.addEventListener('click', handleEnterRoom);
+
+    li.appendChild(p);
+    li.appendChild(button);
+
+    return li;
 }
