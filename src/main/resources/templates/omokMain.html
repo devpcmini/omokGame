@@ -4,190 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omok Game</title>
-    <style>
-        .omok-main {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 50px;
-            padding: 20px;
-        }
-
-        .omok-board {
-            position: relative;
-            width: 600px;
-            height: 600px;
-            border: 1px solid #000;
-            background-color: #e5aa61;
-        }
-
-        .omok-dot {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            transform: translate(-50%, -50%);
-        }
-
-        .omok-dot::before {
-            content: "";
-            position: absolute;
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            background-color: #000;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .omok-stone.black {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background-color: #000;
-            cursor: pointer;
-            transform: translate(-50%, -50%);
-        }
-
-        .omok-stone.white {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background-color: #fff;
-            cursor: pointer;
-            transform: translate(-50%, -50%);
-        }
-
-        .omok-line {
-            position: absolute;
-            background-color: #000;
-        }
-
-        #roomName {
-            background-color: #333;
-            color: #fff;
-            padding: 10px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            text-align: center;
-        }
-
-        .omok-player {
-            width: 35%;
-            background-color: #f0f0f0;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        .player {
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: #ddd;
-            display: flex;
-            border: 2px solid;
-            justify-content: space-between;
-        }
-
-        .black {
-            border-color: white;
-            color: #000;
-        }
-
-        .white {
-            border-color: white;
-            color: #fff;
-        }
-
-        .turn {
-            border-color: rebeccapurple;
-        }
-
-        .nickname {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .stone-color {
-            font-style: italic;
-        }
-
-        button {
-            padding: 10px;
-            margin: 5px;
-            cursor: pointer;
-        }
-
-        #1234 {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-        }
-
-        #5678 {
-            background-color: #f44336;
-            color: white;
-            border: none;
-        }
-    </style>
 </head>
 <body>
     <link href="/css/style.css" rel="stylesheet" type="text/css" id="custom-stylesheet"/>
     <script src="/js/omokMain.js"></script>
-<!--    <div id="roomName"></div>-->
-<!--    <div class="omok-main">-->
-<!--        <div class="omok-board">-->
-<!--            &lt;!&ndash; 각 점에 클릭 이벤트를 가진 도트를 배치 &ndash;&gt;-->
-<!--            <div th:each="row : ${#numbers.sequence(0, 14)}">-->
-<!--                <div th:each="col : ${#numbers.sequence(0, 14)}"-->
-<!--                     class="omok-dot"-->
-<!--                     th:attr="style='top: ' + (${row * 40 + 21}) + 'px; left: ' + (${col * 40 + 20}) + 'px;'"-->
-<!--                     th:onclick="'handleDotClick(this)'"-->
-<!--                     th:data-row="${row}"-->
-<!--                     th:data-col="${col}"-->
-<!--                ></div>-->
-<!--            </div>-->
-
-<!--            &lt;!&ndash; 가로선 그리기 &ndash;&gt;-->
-<!--            <div th:each="row : ${#numbers.sequence(0, 14)}"-->
-<!--                 class="omok-line"-->
-<!--                 th:style="'top: ' + (${row * 40 + 20}) + 'px; left: 20px; width: 560px; height: 1px;'"></div>-->
-
-<!--            &lt;!&ndash; 세로선 그리기 &ndash;&gt;-->
-<!--            <div th:each="col : ${#numbers.sequence(0, 14)}"-->
-<!--                 class="omok-line"-->
-<!--                 th:style="'top: 20px; left: ' + (${col * 40 + 20}) + 'px; width: 1px; height: 560px;'"></div>-->
-<!--        </div>-->
-<!--        <div class="omok-player">-->
-<!--            <div class="player black">-->
-<!--                <div>-->
-<!--                    <div class="player1 nickname"></div>-->
-<!--                    <div class="stone-color">흑돌-->
-<!--                        <div class="omok-stone black" style="transform: translate(190%, -93%) !important;-->
-<!--                        width: 20px !important; height: 20px !important; cursor: default !important;"></div>-->
-<!--                    </div>-->
-<!--                </div>-->
-<!--                <button id="player1" onclick="stoneColorSwitch(this)">이동</button>-->
-<!--            </div>-->
-<!--            <div class="player white">-->
-<!--                <div>-->
-<!--                    <div class="player2 nickname" style="color: #a5a5a5">empty user</div>-->
-<!--                    <div class="stone-color">백돌-->
-<!--                        <div class="omok-stone white" style="transform: translate(190%, -93%) !important;-->
-<!--                        width: 20px !important; height: 20px !important; cursor: default !important;"></div>-->
-<!--                    </div>-->
-<!--                </div>-->
-<!--                <button id="player2"  onclick="stoneColorSwitch(this)">이동</button>-->
-<!--            </div>-->
-<!--            <button id="1234">무르기</button>-->
-<!--            <button id="5678">포기</button>-->
-<!--            <button id="getOut" onclick="fnGetOut()">나가기</button>-->
-<!--        </div>-->
-<!--    </div>-->
-<div class="game-panel">
-</div>
+    <div id="waiting-room" class="waiting-room">
+        <div class="newroom">
+            <form class="newroom__form" onSubmit="handleNewRoom(event)">
+                <input class="newroom__input" type="text" name="roomname" placeholder="방 이름"></input>
+                <button class="newroom__submit">방 만들기</button>
+            </form>
+        </div>
+        <div id="room-list" class="room-list">
+            <h3>방 목록</h3>
+            <ul id="room-list-container" class="room-list__container"></ul>
+        </div>
+    </div>
+    <div class="gaming-room" style="display: none">
+        <div class="omokboard">
+        </div>
+        <div class="game-panel">
+        </div>
+        <div class="endscreen" style="display: none">
+            <div class="endscreen__main">
+                <h3 class="endscreen__text"></h3>
+                <button class="endscreen__button" onClick="onGameEnd()">확인</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -77,6 +77,9 @@
                 console.log(receivedMessage);
                 childFrame = document.getElementById('frameElement');
                 switch (receivedMessage.type) {
+                    case 'message' :
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
+                        break;
                     case 'room_list' :
                         childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
                         break;
@@ -84,41 +87,25 @@
 
                         break;
                     case 'room_enter' :
-                        childFrame.src = '/omok/omokMain';
-                        childFrame.addEventListener('load', () => {
-                            childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
-                        });
+                        childFrame.contentWindow.document.querySelector('.waiting-room').style.display = 'none';
+                        childFrame.contentWindow.document.querySelector('.gaming-room').style.display = '';
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
                         break;
                     case 'room_leave' :
-                        childFrame.src = '/omok/omokRoomList';
+                        childFrame.contentWindow.document.querySelector('.waiting-room').style.display = '';
+                        childFrame.contentWindow.document.querySelector('.gaming-room').style.display = 'none';
                         break;
-                    case 'winner':
+                    case 'player_change'  :
                         childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
                         break;
-                    case 'create' :
-                        childFrame.src = '/omok/omokMain';
-                        childFrame.addEventListener('load', () => {
-                            childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
-                        });
-                        break;
-                    case 'join' :
-                        childFrame.src = '/omok/omokMain';
-                        childFrame.addEventListener('load', () => {
-                            childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
-                        });
-                        break;
-                    case 'placingStone' :
+                    case 'player_selected' :
                         childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
                         break;
-                    case 'getOut' :
-                        childFrame.src = '/omok/omokRoomList';
-                        childFrame.addEventListener('load', () => {
-                            childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
-                        });
+                    case 'game_end' :
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
+                        break;
                     default :
-                        childFrame.addEventListener('load', () => {
-                            childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
-                        });
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
                         break;
                 }
             };
@@ -153,6 +140,6 @@
 <script src="/js/omokCommon.js"></script>
 
 <h1>Omok Game</h1>
-<iframe class="frameElement" id="frameElement" src="/omok/omokRoomList"/>
+<iframe class="frameElement" id="frameElement" src="/omok/omokMain" style="border: 0px"/>
 </body>
 </html>
