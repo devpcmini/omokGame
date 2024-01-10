@@ -1,59 +1,42 @@
-let roomName;
-let nickName;
+let inBoard = false;
+let myTurn = false;
+let coord = {};
+let isGameEnd = false;
+let publicRoom = [];
+let broadMessage = [];
 
 window.addEventListener("message", function (message) {
-    console.log(message);
     if (message.data instanceof Object) {
         const receivedMessage = message.data;
-        const roomNameEle = document.querySelector('#roomName');
         switch (receivedMessage.type) {
-            case 'placingStone' :
-                if(!document.querySelector('.turn').classList.contains(receivedMessage.color)){
-                    return;
-                }
-                const stone = document.createElement('div');
-                stone.className = 'omok-stone ' + receivedMessage.color + ' ' + seq++;
-                stone.style.top = receivedMessage.row * 40 + 20 + 'px';
-                stone.style.left = receivedMessage.col * 40 + 20 + 'px';
-                stone.setAttribute("data-row", receivedMessage.row);
-                stone.setAttribute("data-col", receivedMessage.col);
-                document.querySelector('.omok-board').appendChild(stone);
-                if(receivedMessage.color == "black"){
-                    document.querySelector('.player.black').classList.remove('turn');
-                    document.querySelector('.player.white').classList.add('turn');
-                } else {
-                    document.querySelector('.player.white').classList.remove('turn');
-                    document.querySelector('.player.black').classList.add('turn')
-                }
-                checkWin();
+            case 'room_list' :
+                RoomList({ roomList: receivedMessage.data.map(room => ({ name: room.name }))});
                 break;
-            case 'winner' :
-                winner = receivedMessage.color;
-                alert(winner + ' wins!');
+            case 'player_select' :
+                myTurn = true;
                 break;
-            case 'create' :
-                roomName =receivedMessage.roomName;
-                roomNameEle.textContent = 'room Name : ' + roomName;
-                nickName = receivedMessage.nickname;
-                if(receivedMessage.stoneColor == "black"){
-                    document.querySelector('.player1').textContent = nickName;
-                } else if(receivedMessage.stoneColor == "white") {
-                    document.querySelector('.player2').textContent = nickName;
+            case 'player_change' :
+                myTurn = false;
+                publicRoom[1] = receivedMessage.data.blackPlayer;
+                publicRoom[2] = receivedMessage.data.whitePlayer;
+                if (!(publicRoom[1] == "" || publicRoom[1] == null) &&
+                    !(publicRoom[2] == "" || publicRoom[2] == null)) {
+                    publicRoom[3] = [];
                 }
-                userCheck();
+                GamePanel(publicRoom[0], publicRoom[1], publicRoom[2]);
                 break;
-            case 'join' :
-                roomName = receivedMessage.roomInfos.roomName;
-                roomNameEle.textContent = 'room Name : ' + roomName;
-                nickName = receivedMessage.nickname;
-                if(document.querySelector('.player1').textContent != 'empty user'){
-                    document.querySelector('.player2').textContent = nickName;
-                } else {
-                    document.querySelector('.player1').textContent = nickName;
-                }
+            case 'room_enter' :
+                broadMessage = [];
+                publicRoom = [receivedMessage.data.name,
+                    receivedMessage.data.blackPlayer,
+                    receivedMessage.data.whitePlayer,
+                    receivedMessage.data.takes
+                ];
+                GamePanel(publicRoom[0], publicRoom[1], publicRoom[2]);
                 break;
-            case 'stoneColorSwitch' :
-
+            case 'message' :
+                broadMessage.push(receivedMessage.data);
+                GamePanel(publicRoom[0], publicRoom[1], publicRoom[2]);
                 break;
         }
     }
@@ -63,114 +46,258 @@ function ParentToMessage(message){
     window.parent.postMessage(message);
 }
 
-let seq = 0;
-let winner;
-// dot 클릭 이벤트
-function handleDotClick(e) {
-    if(winner){
+function MessageLine(msg) {
+    return msg + "<br />";
+}
+
+function leaveRoom(){
+    ParentToMessage({type: 'room_leave'});
+}
+
+function moveSpectator() {
+    ParentToMessage({type: 'player_change', data: 'spectator'});
+}
+
+function handleNewRoom(event){
+    event.preventDefault();
+    const name = event.target.roomname.value;
+    event.target.roomname.value = "";
+    if (name.length == 0) {
         return;
     }
-    const row = e.getAttribute("data-row");
-    const col = e.getAttribute("data-col");
-    const message = {type: 'placingStone', color: seq%2==0 ? 'black' : 'white' , row:row , col:col };
-    ParentToMessage(message);
+    const joinRoomMessage = {type: 'room_new', name: name};
+    ParentToMessage(joinRoomMessage);
 }
 
-//가로,세로,대각선, 역대각선으로 다섯 개 이상의 돌이 연속되어 있는지 확인
-function checkWin() {
-    const board = document.querySelector('.omok-board');
-    const stones = Array.from(board.querySelectorAll('.omok-stone'));
-
-    for (const stone of stones) {
-        const stoneColor = stone.classList.contains('black') ? 'black' : 'white';
-        const stonePosition = {
-            top: parseInt(stone.style.top),
-            left: parseInt(stone.style.left)
-        };
-
-        if (checkDirection(board, stoneColor, stonePosition, 1, 0) || // 가로
-            checkDirection(board, stoneColor, stonePosition, 0, 1) || // 세로
-            checkDirection(board, stoneColor, stonePosition, 1, 1) || // 대각선
-            checkDirection(board, stoneColor, stonePosition, 1, -1)) {  // 역대각선
-            const message = {type: 'winner', color: stoneColor };
-            ParentToMessage(message);
-            return;
-        }
-    }
-}
-
-// 특정 위치에서 주어진 방향으로 가로,세로,대각선, 역대각선으로 다섯 개 이상의 돌이 연속되어 있는지 확인
-function checkDirection(board, color, position, directionX, directionY) {
-    const consecutiveStones = [position];
-    for (let i = 1; i < 5; i++) {
-        const nextPosition = {
-            top: position.top + i * directionY * 40,
-            left: position.left + i * directionX * 40
-        };
-        const nextStone = findStoneAtPosition(board, nextPosition);
-        if (nextStone && nextStone.classList.contains(color)) {
-            consecutiveStones.push(nextPosition);
-        } else {
-            break;
-        }
-    }
-    for (let i = 1; i < 5; i++) {
-        const prevPosition = {
-            top: position.top - i * directionY * 40,
-            left: position.left - i * directionX * 40
-        };
-        const prevStone = findStoneAtPosition(board, prevPosition);
-        if (prevStone && prevStone.classList.contains(color)) {
-            consecutiveStones.push(prevPosition);
-        } else {
-            break;
-        }
-    }
-    if (consecutiveStones.length >= 5) {
-        return true;
-    }
-    return false;
-}
-
-// 주어진 위치에 있는 돌을 찾아 반환
-function findStoneAtPosition(board, position) {
-    const stones = Array.from(board.querySelectorAll('.omok-stone'));
-    return stones.find(stone => {
-        const stonePosition = {
-            top: parseInt(stone.style.top),
-            left: parseInt(stone.style.left)
-        };
-        return stonePosition.top === position.top && stonePosition.left === position.left;
+function RoomList(props) {
+    const roomList = props.roomList;
+    const ul = document.querySelector('#room-list-container');
+    ul.innerHTML = '';
+    roomList.forEach(function (roomItem) {
+        const li = RoomItem(roomItem);
+        ul.appendChild(li);
     });
 }
 
-function stoneColorSwitch(e){
-    let target;
-    if(e.id == "player1"){
-        document.querySelector('.player1').textContent = nickName;
-        document.querySelector('.player2').textContent = 'empty user';
-    } else {
-        document.querySelector('.player1').textContent = 'empty user';
-        document.querySelector('.player2').textContent = nickName;
-    }
-    userCheck();
+function RoomItem(room) {
+    const handleEnterRoom = () => {
+        const joinRoomMessage = {type: 'room_enter', name: room.name};
+        ParentToMessage(joinRoomMessage);
+    };
+
+    const li = document.createElement('li');
+    li.className = 'room-list__item';
+
+    const p = document.createElement('p');
+    p.className = 'room-list__name';
+    p.textContent = room.name;
+
+    const button = document.createElement('button');
+    button.className = 'room-list__enter';
+    button.textContent = '입장하기';
+    button.addEventListener('click', handleEnterRoom);
+
+    li.appendChild(p);
+    li.appendChild(button);
+
+    return li;
 }
 
-function userCheck(){
-    if(document.querySelector('.player1').textContent != 'empty user'){
-        document.querySelector('#player1').style.display = 'none';
-    } else {
-        document.querySelector('#player1').style.display = '';
-    }
-    if(document.querySelector('.player2').textContent != 'empty user'){
-        document.querySelector('#player2').style.display = 'none';
-    } else {
-        document.querySelector('#player2').style.display = '';
+function GamePanel(roomname, blackPlayer, whitePlayer) {
+    const gamePanel = document.querySelector(".game-panel");
+    gamePanel.innerHTML = `
+      <div class="game-panel__main">
+        <h3 class="game-panel__title">${roomname}</h3>
+        <div class="game-panel__players">
+          <div class="game-panel__player">
+            <h4 class="game-panel__playercolor game-panel__playercolor--black">
+              Black
+            </h4>
+            <div class="game-panel__playerinfo">
+              ${
+                blackPlayer == "" || blackPlayer == null
+                    ? `<button class="game-panel__playerselect" onclick="blackPlayerCallback()">참가</button>`
+                    : `<p class="game-panel__playername">${blackPlayer}</p>`
+                }
+            </div>
+          </div>
+          <div class="game-panel__player">
+            <h4 class="game-panel__playercolor game-panel__playercolor--white">White</h4>
+            <div class="game-panel__playerinfo">
+              ${
+                  whitePlayer == "" || whitePlayer == null
+                      ? `<button class="game-panel__playerselect" onclick="whitePlayerCallback()">참가</button>`
+                      : `<p class="game-panel__playername">${whitePlayer}</p>`
+              }
+            </div>
+          </div>
+        </div>
+        <div class="game-panel__message">
+          <p>${broadMessage.map(MessageLine).join("")}</p>
+        </div>
+      </div>
+      <div class="game-panel__buttons">
+        <button class="game-panel__button" onclick="moveSpectator()">관전하기</button>
+        <button class="game-panel__button" onclick="leaveRoom()">방 나가기</button>
+      </div>
+    `;
+}
+
+function blackPlayerCallback() {
+    ParentToMessage({type: 'player_change', data : 'black'});
+}
+
+function whitePlayerCallback() {
+    ParentToMessage({type: 'player_change', data : 'white'});
+}
+
+function handleBoardEnter() {
+    inBoard = true;
+}
+
+function handleBoardLeave() {
+    inBoard = false;
+}
+
+function handleBoardMove(thisCoord) {
+    if (publicRoom[3].find((c) => c.x === thisCoord.x && c.y === thisCoord.y) === undefined) {
+        coord = thisCoord;
     }
 }
 
-function fnGetOut(){
-    const message = {type: 'getOut'};
-    ParentToMessage(message);
-};
+function handleBoardSelect() {
+    myTurn = false;
+    console.log(`Select [${coord.x},${coord.y}]`);
+    ParentToMessage({type: 'player_selected', data : coord});
+}
 
+function OmokBoard(takes) {
+    publicRoom[3] = takes;
+    const omokBoard = document.querySelector(".omokboard");
+    omokBoard.innerHTML = `
+      ${myTurn ? CoordSelectArea(handleBoardEnter,handleBoardMove,handleBoardLeave,handleBoardSelect) : ""}
+      ${publicRoom[3].map((takes, index) => MemoriedStone(index))}
+      ${publicRoom[3].length > 0 ? MemoriedStone(publicRoom[3].length - 1, true) : ""}
+      ${myTurn && inBoard ? MemoriedStone(publicRoom[3].length % 2 === 0 ? "black" : "white", "hint") : ""}
+    `;
+}
+
+function createStone({ type, x, y }) {
+    let material = "";
+    type.forEach((m) => {
+        switch (m) {
+            case "black":
+                material += " omokboard__stone--black";
+                break;
+            case "white":
+                material += " omokboard__stone--white";
+                break;
+            case "hint":
+                material += " omokboard__stone--hint";
+                break;
+            case "prev":
+                material += " omokboard__stone--prev";
+                break;
+        }
+    });
+
+    const stoneElement = document.createElement("div");
+    stoneElement.className = `omokboard__stone ${material}`;
+    stoneElement.style.left = `${x * BOARD_SPACE + BOARD_OFFSET}%`;
+    stoneElement.style.top = `${y * BOARD_SPACE + BOARD_OFFSET}%`;
+    stoneElement.setAttribute("key", `${x}${y}`);
+
+    return stoneElement;
+}
+
+const MemoriedStone = (()=> {
+    const memoCache = {};
+    function memoizeStone(props) {
+        const key = JSON.stringify(props);
+        if (memoCache[key]) {
+            return memoCache[key];
+        } else {
+            const stoneElement = createStone(props);
+            memoCache[key] = stoneElement;
+            return stoneElement;
+        }
+    }
+    return memoizeStone;
+})();
+
+function CoordSelectArea(onBoardEnter,onBoardMove,onBoardLeave,onBoardSelect) {
+    function getCoord(event) {
+        let coordX = 0;
+        let coordY = 0;
+
+        if (!isMobile) {
+            const percentX = (event.offsetX * 100.0) / event.target.clientWidth;
+            const percentY = (event.offsetY * 100.0) / event.target.clientHeight;
+
+            coordX = parseInt((percentX - BOARD_OFFSET) / BOARD_SPACE + 0.5);
+            coordY = parseInt((percentY - BOARD_OFFSET) / BOARD_SPACE + 0.5);
+        } else {
+            const bcr = event.target.getBoundingClientRect();
+            const x = event.touches[0].clientX - bcr.x;
+            const y = event.touches[0].clientY - bcr.y;
+
+            const percentX = (x * 100.0) / event.target.clientWidth;
+            const percentY = (y * 100.0) / event.target.clientHeight;
+            coordX = parseInt((percentX - BOARD_OFFSET) / BOARD_SPACE + 0.5);
+            coordY = parseInt((percentY - BOARD_OFFSET) / BOARD_SPACE - 1.5);
+        }
+
+        if (coordX < 0) coordX = 0;
+        if (coordY < 0) coordY = 0;
+
+        if (coordX > 18) coordX = 18;
+        if (coordY > 18) coordY = 18;
+
+        return {
+            x: coordX,
+            y: coordY,
+        };
+    }
+
+    function onMouseEnter() {
+        onBoardEnter();
+    }
+
+    function onMouseMove(event) {
+        onBoardMove(getCoord(event));
+    }
+
+    function onMouseLeave() {
+        onBoardLeave();
+    }
+
+    function onMouseClick() {
+        onBoardSelect();
+    }
+
+    function onTouchStart(event) {
+        onBoardEnter();
+        onBoardMove(getCoord(event));
+    }
+
+    function onTouchMove(event) {
+        onBoardMove(getCoord(event));
+    }
+
+    function onTouchEnd(event) {
+        onBoardLeave();
+        onBoardSelect();
+    }
+
+    const omokboardCoord = document.createElement('div');
+    omokboardCoord.className = "omokboard__coord";
+    omokboardCoord.addEventListener("mouseenter", onMouseEnter);
+    omokboardCoord.addEventListener("mousemove", onMouseMove);
+    omokboardCoord.addEventListener("mouseleave", onMouseLeave);
+    omokboardCoord.addEventListener("click", onMouseClick);
+    omokboardCoord.addEventListener("touchstart", onTouchStart);
+    omokboardCoord.addEventListener("touchmove", onTouchMove);
+    omokboardCoord.addEventListener("touchend", onTouchEnd);
+
+    return omokboardCoord;
+}

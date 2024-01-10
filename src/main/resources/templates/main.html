@@ -57,106 +57,89 @@
         }
     </style>
     <script>
-        console.log(`[[${ip}]]`);
-        window.addEventListener("message", function(message) {
-            if(message.data instanceof Object) {
-                sendMessageToServer(message.data);
+        window.onload = function() {
+            let childFrame;
+            const socket = new WebSocket('ws://172.30.1.38:8080/ws');
+            socket.onopen = function (event) {
+                console.log('WebSocket connection opened:', event);
+            };
+
+            socket.onmessage = function (event) {
+                // 서버로부터 수신된 메시지 처리 (게임 상태 업데이트 등)
+                let receivedMessage;
+                if (isJSON(event.data)) {
+                    receivedMessage = JSON.parse(event.data);
+                } else {
+                    console.log(event.data);
+                    return;
+                }
+                // 플레이어 간 통신 메시지 처리 로직...
+                console.log(receivedMessage);
+                childFrame = document.getElementById('frameElement');
+                switch (receivedMessage.type) {
+                    case 'message' :
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
+                        break;
+                    case 'room_list' :
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
+                        break;
+                    case 'room_new' :
+
+                        break;
+                    case 'room_enter' :
+                        childFrame.contentWindow.document.querySelector('.waiting-room').style.display = 'none';
+                        childFrame.contentWindow.document.querySelector('.gaming-room').style.display = '';
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
+                        break;
+                    case 'room_leave' :
+                        childFrame.contentWindow.document.querySelector('.waiting-room').style.display = '';
+                        childFrame.contentWindow.document.querySelector('.gaming-room').style.display = 'none';
+                        break;
+                    case 'player_change'  :
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
+                        break;
+                    case 'player_selected' :
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
+                        break;
+                    case 'game_end' :
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
+                        break;
+                    default :
+                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
+                        break;
+                }
+            };
+
+            socket.onclose = function (event) {
+                console.log('WebSocket connection closed:', event);
+            };
+
+            // 이벤트 발생 시 서버로 메시지 전송
+            function sendMessageToServer(message) {
+                socket.send(JSON.stringify(message));
             }
-        });
-        let childFrame;
-        const socket = new WebSocket('ws://' + `[[${ip}]]` + ':8080/ws');
-        console.log(socket);
 
-        socket.onopen = function(event) {
-            console.log('WebSocket connection opened:', event);
-        };
 
-        socket.onmessage = function(event) {
-            // 서버로부터 수신된 메시지 처리 (게임 상태 업데이트 등)
-            const receivedMessage = JSON.parse(event.data);
-            // 플레이어 간 통신 메시지 처리 로직...
-            console.log(receivedMessage);
-            childFrame = document.getElementById('frameElement');
-            switch (receivedMessage.type){
-                case 'winner':
-                    childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
-                    break;
-                case 'login' :
-                    document.querySelector('#nickname').style.display = 'none';
-                    document.querySelector('#loginBtn').style.display = 'none';
-                    document.querySelector('#loginNickname').style.display = '';
-                    document.querySelector('#loginNickname').innerText = 'NickName : ' + receivedMessage.nickname;
-
-                    childFrame.src = '/omok/omokRoomList';
-                    break;
-                case 'create' :
-                    childFrame.src = '/omok/omokMain';
-                    childFrame.addEventListener('load', () => {
-                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
-                    });
-                    break;
-                case 'join' :
-                    childFrame.src = '/omok/omokMain';
-                    childFrame.addEventListener('load', () => {
-                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
-                    });
-                    break;
-                case 'placingStone' :
-                    childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
-                    break;
-                case 'getOut' :
-                    childFrame.src = '/omok/omokRoomList';
-                    childFrame.addEventListener('load', () => {
-                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
-                    });
-                default :
-                    childFrame.addEventListener('load', () => {
-                        childFrame.contentWindow.postMessage(receivedMessage, 'http://' + `[[${ip}]]` + ':8080');
-                    });
-                    break;
+            function isJSON(str) {
+                if (/^[\],:{}\s]*$/.test(str.replace(/\\["\\\/bfnrtu]/g, '@').replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
+                    return true;
+                } else {
+                    return false;
+                }
             }
+            window.addEventListener("message", function (message) {
+                if (message.data instanceof Object) {
+                    sendMessageToServer(message.data);
+                }
+            });
         };
-
-        socket.onclose = function(event) {
-            console.log('WebSocket connection closed:', event);
-        };
-
-        // 이벤트 발생 시 서버로 메시지 전송
-        function sendMessageToServer(message) {
-            socket.send(JSON.stringify(message));
-        }
-
-        function login() {
-            const nickname = document.getElementById('nickname').value;
-            const message = {type: 'login', nickname : nickname };
-            sendMessageToServer(message);
-        }
-
-        // 방 생성 함수
-        function createRoom() {
-            const roomName = childFrame.contentDocument.querySelector('#roomNameInput').value;
-            const createRoomMessage = { type: 'create', roomName: roomName };
-            sendMessageToServer(createRoomMessage);
-        }
-
-        // 방 참가 함수
-        function joinRoom() {
-            const roomName = document.getElementById('roomNameInput').value;
-            const joinRoomMessage = { type: 'join', roomName: roomName };
-            sendMessageToServer(joinRoomMessage);
-        }
     </script>
 </head>
 <body>
+<link href="/css/style.css" rel="stylesheet" type="text/css" id="custom-stylesheet"/>
 <script src="/js/omokCommon.js"></script>
 
 <h1>Omok Game</h1>
-<div class="login-container">
-    <input type="text" id="nickname" placeholder="Enter your nickname">
-    <br>
-    <button id="loginBtn" onclick="login()">Login</button>
-    <span id="loginNickname" style="display: none"></span>
-</div>
-<iframe class="frameElement" id="frameElement"></iframe>
+<iframe class="frameElement" id="frameElement" src="/omok/omokMain" style="border: 0px"/>
 </body>
 </html>
