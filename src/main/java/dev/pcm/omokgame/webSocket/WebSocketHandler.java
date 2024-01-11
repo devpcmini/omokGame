@@ -10,19 +10,21 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @Slf4j
 public class WebSocketHandler extends TextWebSocketHandler {
 
     private static Set<WebSocketSession> sessions = new HashSet<>();
     private static Set<PublicRoom> publicRoom = new HashSet<>();
-    private static Set<GameRoom> gameRooms = new HashSet<>();
     private static ObjectMapper objectMapper = new ObjectMapper();
+
+    private static final List<Offset> OFFSETS = List.of(
+            new Offset(1, 0),   // 가로
+            new Offset(1, 1),   // 대각선1
+            new Offset(0, 1),   // 세로
+            new Offset(-1, 1)   // 대각선2
+    );
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -53,7 +55,15 @@ public class WebSocketHandler extends TextWebSocketHandler {
         JsonNode jsonNode = objectMapper.readTree(payload);
         String type = jsonNode.get("type").asText();
         String jsonPayload;
+        String roomName = String.valueOf(session.getAttributes().get("channel"));
+        PublicRoom room = getPublicRoom(roomName);
         switch (type) {
+            case "room_reset" :
+                room.setBlackPlayer("");
+                room.setWhitePlayer("");
+                room.setTakes(new ArrayList<>());
+                emitPlayerChange(room);
+                break;
             case "room_new" :
                 newRoom(session, jsonNode.get("name").asText());
                 break;
@@ -66,11 +76,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 sendRoomList();
                 break;
             case "player_change" :
-                String roomName = String.valueOf(session.getAttributes().get("channel"));
-                PublicRoom room = getPublicRoom(roomName);
                 String color = jsonNode.get("data").asText();
                 if ("black".equals(color)) {
-                    if (!("".equals(room.getBlackPlayer()) || room.getBlackPlayer() == null)) {
+                    if (!"".equals(room.getBlackPlayer())) {
                         jsonPayload = objectMapper.writeValueAsString(
                                 Map.of("type", "error", "msg", "다른 플레이어가 참가중입니다.")
                         );
@@ -83,7 +91,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                         room.setBlackPlayer(session.getId());
                     }
                 } else if ("white".equals(color)) {
-                    if (!("".equals(room.getWhitePlayer()) || room.getWhitePlayer() == null)) {
+                    if (!"".equals(room.getWhitePlayer())) {
                         jsonPayload = objectMapper.writeValueAsString(
                                 Map.of("type", "error", "msg", "다른 플레이어가 참가중입니다.")
                         );
@@ -114,9 +122,137 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 }
                 enterRoom(session,jsonNode.get("name").asText());
                 break;
+            case "room_list" :
+                sendRoomList();
+                break;
+            case "player_selected" :
+                String broadMessage;
+                String playerSelect = objectMapper.writeValueAsString(
+                        Map.of("type", "player_select")
+                );
+                if (room == null) {
+                    log.info("Room " + roomName + "is not existing.");
+                    return;
+                }
+
+                boolean isBlackTurn = room.getTakes().size() % 2 == 0;
+
+                if (isBlackTurn) {
+                    //흑돌
+                    if (!session.getId().equals(room.getBlackPlayer())) {
+                        session.sendMessage(new TextMessage("흑돌 플레이어가 아닙니다."));
+                        return;
+                    }
+                } else {
+                    //백돌
+                    if (!session.getId().equals(room.getWhitePlayer())) {
+                        session.sendMessage(new TextMessage("백돌 플레이어가 아닙니다."));
+                        return;
+                    }
+                }
+
+                if ("".equals(room.getBlackPlayer()) ||
+                      "".equals(room.getWhitePlayer())) {
+                    session.sendMessage(new TextMessage("상대가 존재하지 않습니다."));
+                    return;
+                }
+
+                if (room.getTakes().stream()
+                        .filter(t -> t.getX() == jsonNode.get("data").get("x").asInt()
+                                && t.getY() == jsonNode.get("data").get("y").asInt())
+                        .findFirst()
+                        .orElse(null) != null) {
+                    session.sendMessage(new TextMessage("이미 다른 돌이 위치하고 있습니다."));
+                    session.sendMessage(new TextMessage(playerSelect));
+                    return;
+                }
+
+                Takes takes = new Takes();
+                takes.setX(jsonNode.get("data").get("x").asInt());
+                takes.setY(jsonNode.get("data").get("y").asInt());
+                room.getTakes().add(takes);
+                broadMessage = objectMapper.writeValueAsString(
+                        Map.of("type", "player_selected", "data", jsonNode.get("data"))
+                );
+                broadcastMessage(session,roomName,broadMessage);
+
+                if (checkOmokCompleted(jsonNode.get("data"), room.getTakes())) {
+                    log.info("Omok completed!");
+                    broadMessage = objectMapper.writeValueAsString(
+                            Map.of("type", "game_end", "data", isBlackTurn ? "black" : "white")
+                    );
+                    broadcastMessage(session,roomName,broadMessage);
+                    broadMessage = objectMapper.writeValueAsString(
+                            Map.of("type", "message", "data", "[승리] => " +session.getId())
+                    );
+                    broadcastMessage(session,roomName,broadMessage);
+                    room.setBlackPlayer("");
+                    room.setWhitePlayer("");
+                    emitPlayerChange(room);
+                    return;
+                }
+                if (isBlackTurn) {
+                    sendMessageToSession(room.getWhitePlayer(),playerSelect);
+                } else {
+                    sendMessageToSession(room.getBlackPlayer(),playerSelect);
+                }
+                break;
             default:
                 log.warn("Unhandled message type: {}", type);
         }
+    }
+
+    //오목 완성 판별
+    private boolean checkOmokCompleted(JsonNode coord, List<Takes> takes) {
+        if (checkWin(takes, coord)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private boolean checkWin(List<Takes> takes, JsonNode coord) {
+        List<Offset> offsets = List.of(
+                new Offset(1, 0),   // 가로
+                new Offset(1, 1),   // 대각선1
+                new Offset(0, 1),   // 세로
+                new Offset(-1, 1)   // 대각선2
+        );
+
+        return offsets.stream().anyMatch(dir -> {
+            int streak = 1;
+            int type = (takes.size() - 1) % 2;
+
+            // 정방향
+            for (int x = coord.get("x").asInt() + dir.getX(), y = coord.get("y").asInt() + dir.getY();
+                 x > 0 && x < 19 && y > 0 && y < 19;
+                 x += dir.getX(), y += dir.getY()) {
+                int currentX = x;
+                int currentY = y;
+
+                if (takes.stream().anyMatch(t -> t.getX() == currentX && t.getY() == currentY && takes.indexOf(t) % 2 == type)) {
+                    streak++;
+                } else {
+                    break;
+                }
+            }
+
+            // 반대방향
+            for (int x = coord.get("x").asInt() - dir.getX(), y = coord.get("y").asInt() - dir.getY();
+                 x > 0 && x < 19 && y > 0 && y < 19;
+                 x -= dir.getX(), y -= dir.getY()) {
+                int currentX = x;
+                int currentY = y;
+
+                if (takes.stream().anyMatch(t -> t.getX() == currentX && t.getY() == currentY && takes.indexOf(t) % 2 == type)) {
+                    streak++;
+                } else {
+                    break;
+                }
+            }
+
+            return streak == 5;
+        });
     }
 
     //방 만들기 시 실행되는 메소드
@@ -166,14 +302,14 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
 
         session.getAttributes().put("channel", name);
-        String broadMessage = objectMapper.writeValueAsString(
-                Map.of("type", "message", "data", "[입장] => " + session.getId())
-                );
-        broadcastMessage(session,broadMessage);
         String jsonPayload = objectMapper.writeValueAsString(
                 Map.of("type", "room_enter", "data", room)
         );
         session.sendMessage(new TextMessage(jsonPayload));
+        String broadMessage = objectMapper.writeValueAsString(
+                Map.of("type", "message", "data", "[입장] => " + session.getId())
+        );
+        broadcastMessage(session,name,broadMessage);
     }
 
     //name에 해당하는 방 return
@@ -187,12 +323,23 @@ public class WebSocketHandler extends TextWebSocketHandler {
     }
 
 
-    private void broadcastMessage(WebSocketSession session, String message) {
+    private void broadcastMessage(WebSocketSession session, String sessionChannel, String message) {
         // 특정 채널에 속한 클라이언트들에게 메시지 브로드캐스트
-        String sessionChannel = (String) session.getAttributes().get("channel");
 
         for (WebSocketSession sess : sessions) {
-            if (sess.isOpen() && sessionChannel.equals(sess.getAttributes().get("channel"))) {
+            if (sess.isOpen() && (sessionChannel.equals(sess.getAttributes().get("channel")))) {
+                try {
+                    sess.sendMessage(new TextMessage(message));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private void sendMessageToSession(String id, String message){
+        for (WebSocketSession sess : sessions) {
+            if (sess.isOpen() && id.equals(sess.getId())) {
                 try {
                     sess.sendMessage(new TextMessage(message));
                 } catch (IOException e) {
@@ -206,10 +353,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private void leaveRoom(WebSocketSession session) throws IOException {
         String name = session.getAttributes().get("channel") == null ? null : String.valueOf(session.getAttributes().get("channel"));
         log.info("Socket " + session.getId() + "is leaving room " + name);
-
+        session.getAttributes().remove("channel");
         if (name != null) {
             if (countRoom(name)) {
-                log.info("Remove room " + name);
                 Iterator<PublicRoom> iterator = publicRoom.iterator();
                 while (iterator.hasNext()) {
                     PublicRoom room = iterator.next();
@@ -219,7 +365,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 }
                 sendRoomList();
             } else {
-                PublicRoom room = getPublicRoom(String.valueOf(session.getAttributes().get("channel")));
+                PublicRoom room = getPublicRoom(name);
                 if (session.getId().equals(room.getBlackPlayer())) {
                     room.setBlackPlayer("");
                     emitPlayerChange(room);
@@ -231,20 +377,26 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 String broadMessage = objectMapper.writeValueAsString(
                         Map.of("type", "message", "data", "[퇴장] => " + session.getId())
                 );
-                broadcastMessage(session,broadMessage);
+                broadcastMessage(session,name,broadMessage);
             }
-            session.getAttributes().remove("channel");
         }
     }
 
     //이름이 name인 방이 없다면 true 있으면 false
     private boolean countRoom(String name) {
+        int count = 0;
         for (WebSocketSession sess : sessions) {
-            if (String.valueOf(sess.getAttributes().get("channel")).equals(name)) {
-                return false;
+            if(sess.getAttributes().get("channel") != null) {
+                if (String.valueOf(sess.getAttributes().get("channel")).equals(name)) {
+                    count++;
+                }
             }
         }
-        return true;
+        if(count == 0){
+            return true;
+        } else {
+            return false;
+        }
     }
 
 
@@ -262,8 +414,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        if (!"".equals(room.getBlackPlayer()) && !"".equals(room.getWhitePlayer())) {
-            room.setTakes(null);
+        if (!"".equals(room.getBlackPlayer()) || !"".equals(room.getWhitePlayer())) {
+            room.setTakes(new ArrayList<>());
             String playerSelect = objectMapper.writeValueAsString(
                     Map.of("type", "player_select")
             );
