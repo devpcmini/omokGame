@@ -16,7 +16,7 @@
             </form>
         </div>
         <div id="room-list" class="room-list">
-            <h3>방 목록</h3>
+            <h3 style="text-align: center;">방 목록</h3>
             <ul id="room-list-container" class="room-list__container"></ul>
         </div>
     </div>
@@ -25,10 +25,28 @@
         </div>
         <div class="game-panel">
         </div>
+        <div class="startscreen" style="display: none">
+            <div class="startscreen__main">
+                <h3 class="startscreen__text">게임을 시작하시겠습니까?</h3>
+                <div class="startscreen__buttnDiv">
+                    <button class="startscreen__button" onClick="onGameStart()">예</button>
+                    <button class="startscreen__button" onClick="onGameStartWait()">아니오</button>
+                </div>
+            </div>
+        </div>
         <div class="endscreen" style="display: none">
             <div class="endscreen__main">
                 <h3 class="endscreen__text"></h3>
                 <button class="endscreen__button" onClick="onGameEnd()">확인</button>
+            </div>
+        </div>
+        <div class="exitscreen" style="display: none">
+            <div class="exitscreen__main">
+                <h3 class="exitscreen__text">게임방을 나가시겠습니까?</h3>
+                <div class="exitscreen__buttnDiv">
+                    <button class="exitscreen__button" onClick="onGameExit()">예</button>
+                    <button class="exitscreen__button" onClick="onGameExitCancel()">아니오</button>
+                </div>
             </div>
         </div>
     </div>
