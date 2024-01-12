@@ -32,20 +32,20 @@ body {
     margin: 20px 10px;
 }
 
-.waiting-room {
+.waitingRoom {
     margin: 0 10px;
     width: 100%;
     max-width: 1100px;
 }
 
-.newroom {
+.newRoom {
     margin: 0 20px;
     display: flex;
     flex-direction: row;
     justify-content: center;
 }
 
-.newroom__form {
+.newRoom_form {
     padding: 10px;
     width: 100%;
     max-width: 5000px;
@@ -56,7 +56,7 @@ body {
     box-sizing: border-box;
 }
 
-.newroom__input {
+.newRoom_input {
     flex-grow: 1;
     margin: 5px 10px 5px 5px;
     min-width: 0px;
@@ -68,7 +68,7 @@ body {
     padding-left: 15px;
 }
 
-.newroom__submit {
+.newRoom_submit {
     margin: 10px 10px 10px 10px;
     padding: 0px;
     width: 140px;
@@ -80,15 +80,15 @@ body {
     transition: transform 0.3s ease-in-out;
 }
 
-.newroom__submit:hover {
+.newRoom_submit:hover {
     transform: scale(1.1);
 }
 
-.room-list {
+.roomList {
     margin: 40px 20px 20px 20px;
 }
 
-.room-list__container {
+.roomList_container {
     margin-top: 10px;
     display: flex;
     flex-direction: column;
@@ -96,7 +96,7 @@ body {
     align-items: center;
 }
 
-.room-list__item {
+.roomList_item {
     width: 100%;
     margin: 15px 0 0 0;
     padding: 5px;
@@ -110,13 +110,13 @@ body {
     box-sizing: border-box;
 }
 
-.room-list__name {
+.roomList_name {
     margin-left: 20px;
     font-size: 20px;
     font-weight: bold;
 }
 
-.room-list__enter {
+.roomList_enter {
     margin: 10px;
     padding: 0px;
     width: 180px;
@@ -128,7 +128,7 @@ body {
     transition: transform 0.3s ease-in-out;
 }
 
-.room-list__enter:hover {
+.roomList_enter:hover {
     transform: scale(1.1);
 }
 
@@ -143,7 +143,7 @@ body {
     border-radius: 10px;
 }
 
-.game-panel {
+.gameParticipants {
     min-width: 400px;
     height: 70vh;
     display: flex;
@@ -152,7 +152,7 @@ body {
     align-items: flex-start;
 }
 
-.game-panel__main {
+.gameParticipants_main {
     width: 100%;
     height: 90%;
     display: flex;
@@ -161,13 +161,13 @@ body {
     align-items: flex-start;
 }
 
-.game-panel__title {
+.gameParticipants_title {
     margin: 10px 0 20px 0;
     font-size: 30px;
     align-self: center;
 }
 
-.game-panel__players {
+.gameParticipants_players {
     width: 100%;
     display: flex;
     flex-direction: row;
@@ -175,11 +175,11 @@ body {
     align-items: start;
 }
 
-.game-panel__player {
+.gameParticipants_player {
     width: 48%;
 }
 
-.game-panel__playercolor {
+.gameParticipants_playercolor {
     width: 100%;
     height: 40px;
     display: flex;
@@ -189,17 +189,17 @@ body {
     border-radius: 5px;
 }
 
-.game-panel__playercolor--black {
+.gameParticipants_blackColor {
     background-color: black;
     color: white;
 }
 
-.game-panel__playercolor--white {
+.gameParticipants_whiteColor {
     background-color: white;
     color: black;
 }
 
-.game-panel__playerinfo {
+.gameParticipants_playerinfo {
     margin-top: 10px;
     width: 100%;
     height: 40px;
@@ -209,7 +209,7 @@ body {
     overflow: hidden;
 }
 
-.game-panel__playername {
+.gameParticipants_playername {
     padding: 5px;
     width: 100%;
     height: 100%;
@@ -217,14 +217,22 @@ body {
     text-align: center;
 }
 
-.game-panel__playerselect {
+.gameParticipants_join {
     margin: 1px;
     width: 100%;
     height: 100%;
     padding: 5px;
+    cursor : pointer;
+    border-radius: 5px;
+    border: 0px;
+    transition: transform 0.3s ease-in-out;
 }
 
-.game-panel__message {
+.gameParticipants_join:hover {
+    transform: scale(1.1);
+}
+
+.gameParticipants_message {
     margin: 20px 0 10px 0;
     padding: 15px 0;
     width: 100%;
@@ -238,14 +246,14 @@ body {
     border-radius: 10px;
 }
 
-.game-panel__message p {
+.gameParticipants_message p {
     width: 98%;
     height: 100%;
     overflow-y: scroll;
     box-sizing: border-box;
 }
 
-.game-panel__buttons {
+.gameParticipants_buttons {
     width: 100%;
     display: flex;
     flex-direction: row;
@@ -253,22 +261,35 @@ body {
     align-items: start;
 }
 
-.game-start__button {
+.gameStart_button {
     width: 100%;
     height: 40px;
     margin-top: auto;
     cursor: pointer;
     background-color: #f3c271;
     border-radius: 5px;
+    border: 0px;
+    transition: transform 0.3s ease-in-out;
 }
 
-.game-panel__button {
+.gameStart_button:hover {
+    transform: scale(1.1);
+}
+
+.gameParticipants_button {
     height: 40px;
     width: 48%;
     cursor: pointer;
+    border-radius: 5px;
+    border: 0px;
+    transition: transform 0.3s ease-in-out;
 }
 
-.omokboard {
+.gameParticipants_button:hover {
+    transform: scale(1.1);
+}
+
+.board {
     width: 70vh;
     height: 70vh;
     margin: 0 20px 0 0;
@@ -278,7 +299,7 @@ body {
     touch-action: none;
 }
 
-.omokboard__stone {
+.stone {
     position: absolute;
     width: 4.5%;
     height: 4.5%;
@@ -287,26 +308,22 @@ body {
     box-shadow: 0px 0px 5px 0px gray;
 }
 
-.omokboard__stone--black {
+.stone_black {
     background-color: black;
 }
 
-.omokboard__stone--white {
+.stone_white {
     background-color: white;
 }
 
-.omokboard__stone--hint {
-    opacity: 0.6;
-}
-
-.omokboard__stone--prev {
+.stone_prev {
     width: 2%;
     height: 2%;
     background-color: red;
     z-index: 1;
 }
 
-.omokboard__coord {
+.coord {
     position: absolute;
     width: 100%;
     height: 100%;
@@ -316,7 +333,7 @@ body {
     touch-action: none;
 }
 
-.endscreen {
+.endPopup {
     position: absolute;
     top: 0;
     left: 0;
@@ -328,7 +345,7 @@ body {
     z-index: 9999;
 }
 
-.endscreen__main {
+.endPopup_main {
     width: 40%;
     height: 120px;
     display: flex;
@@ -340,11 +357,11 @@ body {
     border-radius: 20px;
 }
 
-.endscreen__text {
+.endPopup_text {
     margin: 20px 0;
 }
 
-.endscreen__button {
+.endPopup_button {
     width: 70px;
     margin-bottom: 10px;
     padding: 5px;
@@ -354,11 +371,11 @@ body {
     transition: transform 0.3s ease-in-out;
 }
 
-.endscreen__button:hover {
+.endPopup_button:hover {
     transform: scale(1.1);
 }
 
-.startscreen {
+.startPopup {
     position: absolute;
     top: 0;
     left: 0;
@@ -370,7 +387,7 @@ body {
     z-index: 9999;
 }
 
-.startscreen__main {
+.startPopup_main {
     width: 40%;
     height: 120px;
     display: flex;
@@ -382,11 +399,11 @@ body {
     border-radius: 20px;
 }
 
-.startscreen__text {
+.startPopup_text {
     margin: 20px 0;
 }
 
-.startscreen__button {
+.startPopup_button {
     width: 70px;
     margin-bottom: 10px;
     padding: 5px;
@@ -396,11 +413,11 @@ body {
     transition: transform 0.3s ease-in-out;
 }
 
-.startscreen__button:hover {
+.startPopup_button:hover {
     transform: scale(1.1);
 }
 
-.exitscreen {
+.exitPopup {
     position: absolute;
     top: 0;
     left: 0;
@@ -412,7 +429,7 @@ body {
     z-index: 9999;
 }
 
-.exitscreen__main {
+.exitPopup_main {
     width: 40%;
     height: 120px;
     display: flex;
@@ -424,11 +441,11 @@ body {
     border-radius: 20px;
 }
 
-.exitscreen__text {
+.exitPopup_text {
     margin: 20px 0;
 }
 
-.exitscreen__button {
+.exitPopup_button {
     width: 70px;
     margin-bottom: 10px;
     padding: 5px;
@@ -438,11 +455,11 @@ body {
     transition: transform 0.3s ease-in-out;
 }
 
-.exitscreen__button:hover {
+.exitPopup_button:hover {
     transform: scale(1.1);
 }
 
-.alertscreen {
+.alertPopup {
     position: absolute;
     top: 0;
     left: 0;
@@ -454,7 +471,7 @@ body {
     z-index: 9999;
 }
 
-.alertscreen__main {
+.alertPopup_main {
     width: 40%;
     height: 120px;
     display: flex;
@@ -466,11 +483,11 @@ body {
     border-radius: 20px;
 }
 
-.alertscreen__text {
+.alertPopup_text {
     margin: 20px 0;
 }
 
-.alertscreen__button {
+.alertPopup_button {
     width: 70px;
     margin-bottom: 10px;
     padding: 5px;
@@ -480,7 +497,7 @@ body {
     transition: transform 0.3s ease-in-out;
 }
 
-.alertscreen__button:hover {
+.alertPopup_button:hover {
     transform: scale(1.1);
 }
 
@@ -494,11 +511,11 @@ body {
         align-items: center;
     }
 
-    .game-panel {
+    .gameParticipants {
         width: 100%;
     }
 
-    .omokboard {
+    .board {
         width: 90vw;
         height: 90vw;
         margin: 0px;
@@ -533,4 +550,14 @@ html::-webkit-scrollbar-thumb {
 p::-webkit-scrollbar-thumb:hover,
 html::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(to bottom, #f3c271, #866a45);
+}
+
+@keyframes blink_turn {
+    0% { opacity : 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+
+.blink_turn {
+    animation: blink_turn 1s infinite;
 }
