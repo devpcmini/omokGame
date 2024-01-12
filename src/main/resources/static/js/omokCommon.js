@@ -1,9 +1,8 @@
 window.onload = function() {
     let childFrame;
-    const socket = new WebSocket('ws://172.30.1.38:8080/ws');
+    const socket = new WebSocket('ws://' + ip + ':8080/ws');
     socket.onopen = function (event) {
-        console.log('WebSocket connection opened:', event);
-        sendMessageToServer({type: 'room_list'});
+        sendMessageToServer({type: 'roomList'});
     };
 
     socket.onmessage = function (event) {
@@ -11,38 +10,41 @@ window.onload = function() {
         let receivedMessage;
         if (isJSON(event.data)) {
             receivedMessage = JSON.parse(event.data);
-        } else {
-            alert(event.data);
-            return;
         }
         // 플레이어 간 통신 메시지 처리 로직...
         childFrame = document.getElementById('frameElement');
         switch (receivedMessage.type) {
+            case 'error' :
+                document.querySelector('.alertPopup_text').innerText = receivedMessage.data;
+                document.querySelector('.alertPopup').style.display = '';
+                break;
+            case 'start' :
+                childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
+                break;
             case 'message' :
                 childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
                 break;
-            case 'room_list' :
+            case 'roomList' :
                 childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
                 break;
-            case 'room_new' :
+            case 'createRoom' :
                 break;
-            case 'room_enter' :
-                childFrame.contentWindow.document.querySelector('.waiting-room').style.display = 'none';
+            case 'joinRoom' :
+                childFrame.contentWindow.document.querySelector('.waitingRoom').style.display = 'none';
                 childFrame.contentWindow.document.querySelector('.gaming-room').style.display = '';
                 childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
                 break;
-            case 'room_leave' :
-                childFrame.contentWindow.document.querySelector('.waiting-room').style.display = '';
+            case 'leaveRoom' :
+                childFrame.contentWindow.document.querySelector('.waitingRoom').style.display = '';
                 childFrame.contentWindow.document.querySelector('.gaming-room').style.display = 'none';
-
                 break;
-            case 'player_change'  :
+            case 'changeRole'  :
                 childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
                 break;
-            case 'player_selected' :
+            case 'move' :
                 childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
                 break;
-            case 'game_end' :
+            case 'end' :
                 childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
                 break;
             default :
@@ -60,14 +62,11 @@ window.onload = function() {
         socket.send(JSON.stringify(message));
     }
 
-
+    //JSON 형식인지 확인하기
     function isJSON(str) {
-        if (/^[\],:{}\s]*$/.test(str.replace(/\\["\\\/bfnrtu]/g, '@').replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
-            return true;
-        } else {
-            return false;
-        }
+        return /^[\],:{}\s]*$/.test(str.replace(/\\["\\\/bfnrtu]/g, '@').replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').replace(/(?:^|:|,)(?:\s*\[)+/g, ''));
     }
+
     window.addEventListener("message", function (message) {
         if (message.data instanceof Object) {
             sendMessageToServer(message.data);
@@ -76,5 +75,5 @@ window.onload = function() {
 };
 
 function onAlertClick(){
-    document.querySelector('.alertscreen').style.display = 'none';
+    document.querySelector('.alertPopup').style.display = 'none';
 }

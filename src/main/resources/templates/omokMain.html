@@ -8,44 +8,44 @@
 <body>
     <link href="/css/style.css" rel="stylesheet" type="text/css" id="custom-stylesheet"/>
     <script src="/js/omokMain.js"></script>
-    <div id="waiting-room" class="waiting-room">
-        <div class="newroom">
-            <form class="newroom__form" onSubmit="handleNewRoom(event)">
-                <input class="newroom__input" type="text" name="roomname" placeholder="방 이름"></input>
-                <button class="newroom__submit">방 만들기</button>
+    <div id="waitingRoom" class="waitingRoom">
+        <div class="newRoom">
+            <form class="newRoom_form" onSubmit="handleNewRoom(event)">
+                <input class="newRoom_input" type="text" name="roomName" placeholder="방 이름">
+                <button class="newRoom_submit">방 만들기</button>
             </form>
         </div>
-        <div id="room-list" class="room-list">
+        <div id="roomList" class="roomList">
             <h3 style="text-align: center;">방 목록</h3>
-            <ul id="room-list-container" class="room-list__container"></ul>
+            <ul id="roomList_container" class="roomList_container"></ul>
         </div>
     </div>
     <div class="gaming-room" style="display: none">
-        <div class="omokboard">
+        <div class="board">
         </div>
-        <div class="game-panel">
+        <div class="gameParticipants">
         </div>
-        <div class="startscreen" style="display: none">
-            <div class="startscreen__main">
-                <h3 class="startscreen__text">게임을 시작하시겠습니까?</h3>
-                <div class="startscreen__buttnDiv">
-                    <button class="startscreen__button" onClick="onGameStart()">예</button>
-                    <button class="startscreen__button" onClick="onGameStartWait()">아니오</button>
+        <div class="startPopup" style="display: none">
+            <div class="startPopup_main">
+                <h3 class="startPopup_text">게임을 시작하시겠습니까?</h3>
+                <div class="startPopup_btnDiv">
+                    <button class="startPopup_button" onClick="onGameStart()">예</button>
+                    <button class="startPopup_button" onClick="onGameStartWait()">아니오</button>
                 </div>
             </div>
         </div>
-        <div class="endscreen" style="display: none">
-            <div class="endscreen__main">
-                <h3 class="endscreen__text"></h3>
-                <button class="endscreen__button" onClick="onGameEnd()">확인</button>
+        <div class="endPopup" style="display: none">
+            <div class="endPopup_main">
+                <h3 class="endPopup_text"></h3>
+                <button class="endPopup_button" onClick="onGameEnd()">확인</button>
             </div>
         </div>
-        <div class="exitscreen" style="display: none">
-            <div class="exitscreen__main">
-                <h3 class="exitscreen__text">게임방을 나가시겠습니까?</h3>
-                <div class="exitscreen__buttnDiv">
-                    <button class="exitscreen__button" onClick="onGameExit()">예</button>
-                    <button class="exitscreen__button" onClick="onGameExitCancel()">아니오</button>
+        <div class="exitPopup" style="display: none">
+            <div class="exitPopup_main">
+                <h3 class="exitPopup_text">게임방을 나가시겠습니까?</h3>
+                <div class="exitPopup_btnDiv">
+                    <button class="exitPopup_button" onClick="onGameExit()">예</button>
+                    <button class="exitPopup_button" onClick="onGameExitCancel()">아니오</button>
                 </div>
             </div>
         </div>
