@@ -1,99 +1,148 @@
+const OFFSET = 3.62;
+const SPACE = 5.14;
 let inBoard = false;
 let myTurn = false;
 let coord = {};
-let isGameEnd = false;
 let publicRoom = [];
 let broadMessage = [];
+let isStart = false;
+let isFirst = true;
+let myId;
 
+const audio = new Audio('../audio/stoneSound.wav');
+
+//parent에서 message 받는 이벤트 리스너 
 window.addEventListener("message", function (message) {
     if (message.data instanceof Object) {
         const receivedMessage = message.data;
+        const blackDiv = document.querySelector('.gameParticipants_blackColor');
+        const whiteDiv = document.querySelector('.gameParticipants_whiteColor');
         switch (receivedMessage.type) {
-            case 'room_list' :
-                RoomList({ roomList: receivedMessage.data.map(room => ({ name: room.name }))});
+            case 'start' :
+                isStart = true;
+                document.querySelector('.gameStart_button').disabled = true;
+                document.querySelector('.board').style.cursor = 'pointer';
+                loadOmokBoard();
                 break;
-            case 'player_select' :
+            case 'end' : //게임 종료
+                GameEndScreen(receivedMessage.data);
+                break;
+            case 'roomList' : //방 목록 조회
+                createRoomList({ roomList: receivedMessage.data.map(room => ({ name: room.name }))});
+                break;
+            case 'joinRoom' : //방 입장
+                isFirst = true;
+                broadMessage = [];
+                publicRoom = [receivedMessage.data.name,
+                    receivedMessage.data.blackPlayer == null ? "" : receivedMessage.data.blackPlayer,
+                    receivedMessage.data.whitePlayer == null ? "" : receivedMessage.data.whitePlayer,
+                    receivedMessage.data.takes == null ? [] : receivedMessage.data.takes
+                ];
+                createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
+                break;
+            case 'message' : //메세지 받기
+                broadMessage.push(receivedMessage.data);
+                if(isFirst && receivedMessage.data.indexOf('[입장] => ') > -1){
+                    isFirst = false;
+                    myId = receivedMessage.data.replace("[입장] => ","");
+                }
+                createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
+                break;
+            case 'player_select' : //해당 player turn 지정
                 myTurn = true;
+                loadOmokBoard();
                 break;
-            case 'player_change' :
+            case 'changeRole' :
                 myTurn = false;
                 publicRoom[1] = receivedMessage.data.blackPlayer;
                 publicRoom[2] = receivedMessage.data.whitePlayer;
-                if (!(publicRoom[1] == "" || publicRoom[1] == null) &&
-                    !(publicRoom[2] == "" || publicRoom[2] == null)) {
+                if (publicRoom[1] !== "" &&
+                    publicRoom[2] !== "") {
                     publicRoom[3] = [];
                 }
-                GamePanel(publicRoom[0], publicRoom[1], publicRoom[2]);
+                createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
                 break;
-            case 'room_enter' :
-                broadMessage = [];
-                publicRoom = [receivedMessage.data.name,
-                    receivedMessage.data.blackPlayer,
-                    receivedMessage.data.whitePlayer,
-                    receivedMessage.data.takes
-                ];
-                GamePanel(publicRoom[0], publicRoom[1], publicRoom[2]);
-                break;
-            case 'message' :
-                broadMessage.push(receivedMessage.data);
-                GamePanel(publicRoom[0], publicRoom[1], publicRoom[2]);
+            case 'move' : //오목판 reload
+                publicRoom[3].push(receivedMessage.data);
+                const color = publicRoom[3].length % 2 === 0 ? 'black' : 'white';
+                if(color === 'black') {
+                    blackDiv.classList.add('blink_turn');
+                    if(whiteDiv.classList.contains('blink_turn')) {
+                        whiteDiv.classList.remove('blink_turn');
+                    }
+                } else if(color === 'white'){
+                    whiteDiv.classList.add('blink_turn');
+                    if(blackDiv.classList.contains('blink_turn')) {
+                        blackDiv.classList.remove('blink_turn');
+                    }
+                }
+                loadOmokBoard();
                 break;
         }
     }
 });
 
-function ParentToMessage(message){
+//parent한테 메시지 보내는 함수
+function parentToMessage(message){
     window.parent.postMessage(message);
 }
 
-function MessageLine(msg) {
+//message 이벤트를 받아 쌓는 함수
+function messageLine(msg) {
     return msg + "<br />";
 }
 
+//방 나가기 버튼 클릭 시 발생 함수
 function leaveRoom(){
-    ParentToMessage({type: 'room_leave'});
+    document.querySelector('.exitPopup').style.display = '';
 }
 
-function moveSpectator() {
-    ParentToMessage({type: 'player_change', data: 'spectator'});
+//관전하기 버튼 클릭 시 발생 함수
+function moveViewer() {
+    parentToMessage({type: 'changeRole', data: 'viewer'});
 }
 
+//방 만들기 버튼 클릭 시 발생 함수
 function handleNewRoom(event){
     event.preventDefault();
-    const name = event.target.roomname.value;
-    event.target.roomname.value = "";
-    if (name.length == 0) {
+    const name = event.target.roomName.value;
+    event.target.roomName.value = "";
+    if (name.length === 0) {
+        window.parent.document.querySelector('.alertPopup_text').innerText = '방 이름을 입력해주세요.';
+        window.parent.document.querySelector('.alertPopup').style.display = '';
         return;
     }
-    const joinRoomMessage = {type: 'room_new', name: name};
-    ParentToMessage(joinRoomMessage);
+    const joinRoomMessage = {type: 'createRoom', name: name};
+    parentToMessage(joinRoomMessage);
 }
 
-function RoomList(props) {
+//방 목록 생성 함수
+function createRoomList(props) {
     const roomList = props.roomList;
-    const ul = document.querySelector('#room-list-container');
+    const ul = document.querySelector('#roomList_container');
     ul.innerHTML = '';
     roomList.forEach(function (roomItem) {
-        const li = RoomItem(roomItem);
+        const li = roomInfo(roomItem);
         ul.appendChild(li);
     });
 }
 
-function RoomItem(room) {
+//방 요소 생성 함수
+function roomInfo(room) {
     const handleEnterRoom = () => {
-        const joinRoomMessage = {type: 'room_enter', name: room.name};
-        ParentToMessage(joinRoomMessage);
+        const joinRoomMessage = {type: 'joinRoom', name: room.name};
+        parentToMessage(joinRoomMessage);
     };
 
     const li = document.createElement('li');
-    li.className = 'room-list__item';
+    li.className = 'roomList_item';
 
     const p = document.createElement('p');
-    p.className = 'room-list__name';
+    p.className = 'roomList_name';
     p.textContent = room.name;
 
     const button = document.createElement('button');
-    button.className = 'room-list__enter';
+    button.className = 'roomList_enter';
     button.textContent = '입장하기';
     button.addEventListener('click', handleEnterRoom);
 
@@ -103,201 +152,209 @@ function RoomItem(room) {
     return li;
 }
 
-function GamePanel(roomname, blackPlayer, whitePlayer) {
-    const gamePanel = document.querySelector(".game-panel");
+//방 입장 시 오목판 우측에 요소 생성 함수
+function createGameParticipants(roomName, blackPlayer, whitePlayer) {
+    const gamePanel = document.querySelector(".gameParticipants");
+    const startBtnDisabled = !((blackPlayer !== '' && whitePlayer !== '') && myId === blackPlayer);
     gamePanel.innerHTML = `
-      <div class="game-panel__main">
-        <h3 class="game-panel__title">${roomname}</h3>
-        <div class="game-panel__players">
-          <div class="game-panel__player">
-            <h4 class="game-panel__playercolor game-panel__playercolor--black">
+      <div class="gameParticipants_main">
+        <h3 class="gameParticipants_title">${roomName}</h3>
+        <div class="gameParticipants_players">
+          <div class="gameParticipants_player">
+            <h4 class="gameParticipants_playercolor gameParticipants_blackColor">
               Black
             </h4>
-            <div class="game-panel__playerinfo">
+            <div class="gameParticipants_playerinfo">
               ${
-                blackPlayer == "" || blackPlayer == null
-                    ? `<button class="game-panel__playerselect" onclick="blackPlayerCallback()">참가</button>`
-                    : `<p class="game-panel__playername">${blackPlayer}</p>`
+                blackPlayer === ""
+                    ? `<button class="gameParticipants_join" onclick="joinBlackPlayer()">참가</button>`
+                    : `<p class="gameParticipants_playername">${blackPlayer}</p>`
                 }
             </div>
           </div>
-          <div class="game-panel__player">
-            <h4 class="game-panel__playercolor game-panel__playercolor--white">White</h4>
-            <div class="game-panel__playerinfo">
+          <div class="gameParticipants_player">
+            <h4 class="gameParticipants_playercolor gameParticipants_whiteColor">White</h4>
+            <div class="gameParticipants_playerinfo">
               ${
-                  whitePlayer == "" || whitePlayer == null
-                      ? `<button class="game-panel__playerselect" onclick="whitePlayerCallback()">참가</button>`
-                      : `<p class="game-panel__playername">${whitePlayer}</p>`
+                  whitePlayer === ""
+                      ? `<button class="gameParticipants_join" onclick="joinWhitePlayer()">참가</button>`
+                      : `<p class="gameParticipants_playername">${whitePlayer}</p>`
               }
             </div>
           </div>
         </div>
-        <div class="game-panel__message">
-          <p>${broadMessage.map(MessageLine).join("")}</p>
+        <div class="gameParticipants_message">
+          <p>${broadMessage.map(messageLine).join("")}</p>
         </div>
+        <button class="gameStart_button" ${startBtnDisabled === true ? `disabled="true"` : ``} onclick="gameStart()">게임시작</button>
       </div>
-      <div class="game-panel__buttons">
-        <button class="game-panel__button" onclick="moveSpectator()">관전하기</button>
-        <button class="game-panel__button" onclick="leaveRoom()">방 나가기</button>
+      <div class="gameParticipants_buttons">
+        <button class="gameParticipants_button" onclick="moveViewer()">관전하기</button>
+        <button class="gameParticipants_button" onclick="leaveRoom()">방 나가기</button>
       </div>
     `;
 }
 
-function blackPlayerCallback() {
-    ParentToMessage({type: 'player_change', data : 'black'});
+//흑돌 플레이어로 참가
+function joinBlackPlayer() {
+    parentToMessage({type: 'changeRole', data : 'black'});
 }
 
-function whitePlayerCallback() {
-    ParentToMessage({type: 'player_change', data : 'white'});
+//백돌 플레이어로 참가
+function joinWhitePlayer() {
+    parentToMessage({type: 'changeRole', data : 'white'});
 }
 
+//오목판 안에 마우스 들어왔을때 이벤트
 function handleBoardEnter() {
     inBoard = true;
 }
 
+//오목판 안에 마우스 나갔을때 이벤트
 function handleBoardLeave() {
     inBoard = false;
 }
 
-function handleBoardMove(thisCoord) {
-    if (publicRoom[3].find((c) => c.x === thisCoord.x && c.y === thisCoord.y) === undefined) {
+//오목판 클릭 시 이벤트
+function handleBoardClick(thisCoord) {
+    myTurn = false;
+    if (publicRoom[3].find((take) => take.x === thisCoord.x && take.y === thisCoord.y) !== undefined) {
+        return;
+    } else {
         coord = thisCoord;
+    }
+    audio.play();
+    parentToMessage({type: 'move', data : coord});
+}
+
+//오목판 Load 함수
+function loadOmokBoard() {
+    const boardDiv = document.querySelector(".board");
+    boardDiv.innerHTML = '';
+    if(isStart && myTurn) {
+        boardDiv.appendChild(handleStoneEvent(handleBoardEnter,handleBoardLeave,handleBoardClick));
+    }
+    publicRoom[3].map((takes, index) => {
+        boardDiv.appendChild(createStone(index % 2 === 0 ? "black" : "white",takes.x, takes.y));
+    });
+    if(publicRoom[3].length > 0){
+        boardDiv.appendChild(createStone("prev",publicRoom[3][publicRoom[3].length-1].x, publicRoom[3][publicRoom[3].length-1].y));
     }
 }
 
-function handleBoardSelect() {
-    myTurn = false;
-    console.log(`Select [${coord.x},${coord.y}]`);
-    ParentToMessage({type: 'player_selected', data : coord});
-}
-
-function OmokBoard(takes) {
-    publicRoom[3] = takes;
-    const omokBoard = document.querySelector(".omokboard");
-    omokBoard.innerHTML = `
-      ${myTurn ? CoordSelectArea(handleBoardEnter,handleBoardMove,handleBoardLeave,handleBoardSelect) : ""}
-      ${publicRoom[3].map((takes, index) => MemoriedStone(index))}
-      ${publicRoom[3].length > 0 ? MemoriedStone(publicRoom[3].length - 1, true) : ""}
-      ${myTurn && inBoard ? MemoriedStone(publicRoom[3].length % 2 === 0 ? "black" : "white", "hint") : ""}
-    `;
-}
-
-function createStone({ type, x, y }) {
-    let material = "";
-    type.forEach((m) => {
-        switch (m) {
-            case "black":
-                material += " omokboard__stone--black";
-                break;
-            case "white":
-                material += " omokboard__stone--white";
-                break;
-            case "hint":
-                material += " omokboard__stone--hint";
-                break;
-            case "prev":
-                material += " omokboard__stone--prev";
-                break;
-        }
-    });
+//오목돌 생성 함수
+function createStone(type, x, y ) {
+    let classType = "";
+    switch (type) {
+        case "black":
+            classType += " stone_black";
+            break;
+        case "white":
+            classType += " stone_white";
+            break;
+        case "prev":
+            classType += " stone_prev";
+            break;
+    }
 
     const stoneElement = document.createElement("div");
-    stoneElement.className = `omokboard__stone ${material}`;
-    stoneElement.style.left = `${x * BOARD_SPACE + BOARD_OFFSET}%`;
-    stoneElement.style.top = `${y * BOARD_SPACE + BOARD_OFFSET}%`;
+    stoneElement.className = `stone ${classType}`;
+    stoneElement.style.left = `${x * SPACE + OFFSET}%`;
+    stoneElement.style.top = `${y * SPACE + OFFSET}%`;
     stoneElement.setAttribute("key", `${x}${y}`);
-
     return stoneElement;
 }
 
-const MemoriedStone = (()=> {
-    const memoCache = {};
-    function memoizeStone(props) {
-        const key = JSON.stringify(props);
-        if (memoCache[key]) {
-            return memoCache[key];
-        } else {
-            const stoneElement = createStone(props);
-            memoCache[key] = stoneElement;
-            return stoneElement;
-        }
+//오목돌 놓는 좌표 구하는 함수
+function getCoord(event) {
+    let stoneX;
+    let stoneY;
+
+    const percentX = (event.offsetX * 100.0) / event.target.clientWidth;
+    const percentY = (event.offsetY * 100.0) / event.target.clientHeight;
+
+    stoneX = parseInt((percentX - OFFSET) / SPACE + 0.5);
+    stoneY = parseInt((percentY - OFFSET) / SPACE + 0.5);
+
+    if (stoneX < 0) {
+        stoneX = 0;
     }
-    return memoizeStone;
-})();
-
-function CoordSelectArea(onBoardEnter,onBoardMove,onBoardLeave,onBoardSelect) {
-    function getCoord(event) {
-        let coordX = 0;
-        let coordY = 0;
-
-        if (!isMobile) {
-            const percentX = (event.offsetX * 100.0) / event.target.clientWidth;
-            const percentY = (event.offsetY * 100.0) / event.target.clientHeight;
-
-            coordX = parseInt((percentX - BOARD_OFFSET) / BOARD_SPACE + 0.5);
-            coordY = parseInt((percentY - BOARD_OFFSET) / BOARD_SPACE + 0.5);
-        } else {
-            const bcr = event.target.getBoundingClientRect();
-            const x = event.touches[0].clientX - bcr.x;
-            const y = event.touches[0].clientY - bcr.y;
-
-            const percentX = (x * 100.0) / event.target.clientWidth;
-            const percentY = (y * 100.0) / event.target.clientHeight;
-            coordX = parseInt((percentX - BOARD_OFFSET) / BOARD_SPACE + 0.5);
-            coordY = parseInt((percentY - BOARD_OFFSET) / BOARD_SPACE - 1.5);
-        }
-
-        if (coordX < 0) coordX = 0;
-        if (coordY < 0) coordY = 0;
-
-        if (coordX > 18) coordX = 18;
-        if (coordY > 18) coordY = 18;
-
-        return {
-            x: coordX,
-            y: coordY,
-        };
+    if (stoneY < 0) {
+        stoneY = 0;
+    }
+    if (stoneX > 18) {
+        stoneX = 18;
+    }
+    if (stoneY > 18) {
+        stoneY = 18;
     }
 
+    return {
+        x: stoneX,
+        y: stoneY,
+    };
+}
+
+//오목판에 이벤트 등록 함수
+function handleStoneEvent(onBoardEnter,onBoardLeave,onBoardClick) {
     function onMouseEnter() {
         onBoardEnter();
     }
-
-    function onMouseMove(event) {
-        onBoardMove(getCoord(event));
-    }
-
     function onMouseLeave() {
         onBoardLeave();
     }
-
-    function onMouseClick() {
-        onBoardSelect();
+    function onMouseClick(event) {
+        onBoardClick(getCoord(event));
     }
+    const coordDiv = document.createElement('div');
+    coordDiv.className = "coord";
+    coordDiv.addEventListener("mouseenter", onMouseEnter);
+    coordDiv.addEventListener("mouseleave", onMouseLeave);
+    coordDiv.addEventListener("click", onMouseClick);
 
-    function onTouchStart(event) {
-        onBoardEnter();
-        onBoardMove(getCoord(event));
+    return coordDiv;
+}
+
+//게임 승자 발생 시 팝업 호출 함수
+function GameEndScreen(winner){
+    const text = `${winner} is winner!`;
+    document.querySelector('.endPopup').style.display = '';
+    document.querySelector('.endPopup_text').innerText = text;
+}
+
+//게임 승자 팝업 닫기 함수
+function onGameEnd(){
+    isStart = false;
+    document.querySelector('.endPopup').style.display = 'none';
+}
+
+//게임 시작 함수
+function onGameStart(){
+    document.querySelector('.startPopup').style.display = 'none';
+    parentToMessage({type: 'start'});
+}
+
+//게임 시작 팝업 취소 함수
+function onGameStartWait(){
+    document.querySelector('.startPopup').style.display = 'none';
+}
+
+//방 나가기 함수
+function onGameExit(){
+    document.querySelector('.exitPopup').style.display = 'none';
+    parentToMessage({type: 'leaveRoom'});
+}
+//방 나가기 취소 함수
+function onGameExitCancel(){
+    document.querySelector('.exitPopup').style.display = 'none';
+}
+
+//게임시작 팝업 띄우기
+function gameStart(){
+    if(publicRoom[1] !== '' && publicRoom[2] !== '') {
+        if(myId !== publicRoom[1]){
+            return;
+        }
+        document.querySelector('.startPopup').style.display = '';
     }
-
-    function onTouchMove(event) {
-        onBoardMove(getCoord(event));
-    }
-
-    function onTouchEnd(event) {
-        onBoardLeave();
-        onBoardSelect();
-    }
-
-    const omokboardCoord = document.createElement('div');
-    omokboardCoord.className = "omokboard__coord";
-    omokboardCoord.addEventListener("mouseenter", onMouseEnter);
-    omokboardCoord.addEventListener("mousemove", onMouseMove);
-    omokboardCoord.addEventListener("mouseleave", onMouseLeave);
-    omokboardCoord.addEventListener("click", onMouseClick);
-    omokboardCoord.addEventListener("touchstart", onTouchStart);
-    omokboardCoord.addEventListener("touchmove", onTouchMove);
-    omokboardCoord.addEventListener("touchend", onTouchEnd);
-
-    return omokboardCoord;
 }
