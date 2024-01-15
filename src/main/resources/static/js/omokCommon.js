@@ -19,36 +19,36 @@ window.onload = function() {
                 document.querySelector('.alertPopup').style.display = '';
                 break;
             case 'start' :
-                childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             case 'message' :
-                childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             case 'roomList' :
-                childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             case 'createRoom' :
                 break;
             case 'joinRoom' :
                 childFrame.contentWindow.document.querySelector('.waitingRoom').style.display = 'none';
                 childFrame.contentWindow.document.querySelector('.gaming-room').style.display = '';
-                childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             case 'leaveRoom' :
                 childFrame.contentWindow.document.querySelector('.waitingRoom').style.display = '';
                 childFrame.contentWindow.document.querySelector('.gaming-room').style.display = 'none';
                 break;
             case 'changeRole'  :
-                childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             case 'move' :
-                childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             case 'end' :
-                childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             default :
-                childFrame.contentWindow.postMessage(receivedMessage, 'http://' + ip + ':8080');
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
         }
     };
