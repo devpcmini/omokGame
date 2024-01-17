@@ -40,6 +40,24 @@
                 <button class="endPopup_button" onClick="onGameEnd()">확인</button>
             </div>
         </div>
+        <div class="giveUpPopup" style="display: none">
+            <div class="giveUpPopup_main">
+                <h3 class="giveUpPopup_text">항복 하시겠습니까?</h3>
+                <div class="giveUpPopup_btnDiv">
+                    <button class="giveUpPopup_button" onClick="onGiveUp()">예</button>
+                    <button class="giveUpPopup_button" onClick="onGiveUpCancel()">아니오</button>
+                </div>
+            </div>
+        </div>
+        <div class="undoMovePopup" style="display: none">
+            <div class="undoMovePopup_main">
+                <h3 class="undoMovePopup_text">무르시겠습니까?</h3>
+                <div class="undoMovePopup_btnDiv">
+                    <button class="undoMovePopup_button" onClick="onUndoMove()">예</button>
+                    <button class="undoMovePopup_button" onClick="onUndoMoveCancel()">아니오</button>
+                </div>
+            </div>
+        </div>
         <div class="exitPopup" style="display: none">
             <div class="exitPopup_main">
                 <h3 class="exitPopup_text">게임방을 나가시겠습니까?</h3>
