@@ -48,6 +48,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         JsonNode jsonNode = objectMapper.readTree(payload);
         String type = jsonNode.get("type").asText();
         String jsonPayload;
+        String broadMessage;
         String roomName = String.valueOf(session.getAttributes().get("channel"));
         PublicRoom room = getPublicRoom(roomName);
         switch (type) {
@@ -129,8 +130,34 @@ public class WebSocketHandler extends TextWebSocketHandler {
             case "roomList" :
                 sendRoomList();
                 break;
+            case "undoMove" :
+                room.getTakes().remove(room.getTakes().size() - 1);
+                room.getTakes().remove(room.getTakes().size() - 1);
+                broadMessage = objectMapper.writeValueAsString(
+                        Map.of("type", "undoMove","data", room.getTakes())
+                );
+                broadcastMessage(roomName,broadMessage);
+                String undoMessage = objectMapper.writeValueAsString(
+                        Map.of("type", "message", "data", "[무르기] => " + session.getId())
+                );
+                broadcastMessage(roomName,undoMessage);
+                break;
+            case "giveUp" :
+                String giveUpColor = String.valueOf(jsonNode.get("color").asText());
+                String winner = room.getBlackPlayer().equals(giveUpColor) ? room.getWhitePlayer() : room.getBlackPlayer();
+                broadMessage = objectMapper.writeValueAsString(
+                        Map.of("type", "end", "data", giveUpColor.equals("black") ? "white" : "black")
+                );
+                broadcastMessage(roomName,broadMessage);
+                broadMessage = objectMapper.writeValueAsString(
+                        Map.of("type", "message", "data", "[항복] => " + winner )
+                );
+                broadcastMessage(roomName,broadMessage);
+                room.setBlackPlayer("");
+                room.setWhitePlayer("");
+                emitPlayerChange(room);
+                break;
             case "move" :
-                String broadMessage;
                 String errorMessage;
                 String playerSelect = objectMapper.writeValueAsString(
                         Map.of("type", "player_select")
@@ -188,11 +215,44 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 takes.setX(jsonNode.get("data").get("x").asInt());
                 takes.setY(jsonNode.get("data").get("y").asInt());
                 room.getTakes().add(takes);
+                if(room.getTakes().size() % 2 == 1) {
+                    //쌍삼 체크
+                    log.info("omok33Rule ==> {}",omok33Rule(room.getTakes(), jsonNode.get("data")));
+                    if (omok33Rule(room.getTakes(), jsonNode.get("data"))) {
+                        room.getTakes().remove(room.getTakes().size() - 1);
+                        String pairMessage = objectMapper.writeValueAsString(
+                                Map.of("type", "message", "data", "[쌍삼] => " + session.getId())
+                        );
+                        broadcastMessage(roomName, pairMessage);
+                        return;
+                    }
+                    //44 체크
+                    log.info("omok44Rule ==> {}",omok44Rule(room.getTakes(), jsonNode.get("data")));
+                    if (omok44Rule(room.getTakes(), jsonNode.get("data"))) {
+                        room.getTakes().remove(room.getTakes().size() - 1);
+                        String pairMessage = objectMapper.writeValueAsString(
+                                Map.of("type", "message", "data", "[사사] => " + session.getId())
+                        );
+                        broadcastMessage(roomName, pairMessage);
+                        return;
+                    }
+                    //장목 체크
+                    log.info("omokJangmokRule ==> {}",omokJangmokRule(room.getTakes(), jsonNode.get("data")));
+                    if (omokJangmokRule(room.getTakes(), jsonNode.get("data"))) {
+                        room.getTakes().remove(room.getTakes().size() - 1);
+                        String pairMessage = objectMapper.writeValueAsString(
+                                Map.of("type", "message", "data", "[장목] => " + session.getId())
+                        );
+                        broadcastMessage(roomName, pairMessage);
+                        return;
+                    }
+                }
                 broadMessage = objectMapper.writeValueAsString(
                         Map.of("type", "move", "data", jsonNode.get("data"))
                 );
                 broadcastMessage(roomName,broadMessage);
-
+                //완성 체크
+                log.info("checkOmokCompleted ==> {}",checkOmokCompleted(jsonNode.get("data"), room.getTakes()));
                 if (checkOmokCompleted(jsonNode.get("data"), room.getTakes())) {
                     log.info("Omok completed!");
                     broadMessage = objectMapper.writeValueAsString(
@@ -208,6 +268,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     emitPlayerChange(room);
                     return;
                 }
+
                 if (isBlackTurn) {
                     sendMessageToSession(room.getWhitePlayer(),playerSelect);
                 } else {
@@ -235,7 +296,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
         return offsets.stream().anyMatch(dir -> {
             int streak = 1;
             int type = (takes.size() - 1) % 2;
-
             // 정방향
             for (int x = coord.get("x").asInt() + dir.getX(), y = coord.get("y").asInt() + dir.getY();
                  x > 0 && x < 19 && y > 0 && y < 19;
@@ -460,6 +520,874 @@ public class WebSocketHandler extends TextWebSocketHandler {
             }
         }
     }
+
+    /*************************************************************33***************************************************/
+    //열린 3이 2개이상이면 쌍삼으로 간주하여 true리턴
+    private boolean omok33Rule(List<Takes> takes, JsonNode coord) {
+        int count = 0;
+        count += validateDoubleThrees1(takes,coord);
+        count += validateDoubleThrees2(takes,coord);
+        count += validateDoubleThrees3(takes,coord);
+        count += validateDoubleThrees4(takes,coord);
+
+        if(count >= 2) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // ← → 탐색
+    // ─ 탐색 : 열린3이 되면 1을 리턴 아니면 0 리턴
+    private int validateDoubleThrees1(List<Takes> takes, JsonNode coord) {
+        int stone1 = 0;
+        int stone2 = 0;
+        int allStone = 0;
+        //열린 3인지 체크하기위한것..
+        int blink1 = 1;
+
+        //blink2 는 blink1 과 같음 중간에서넣어줄거임.
+        // ←
+        int xx = coord.get("x").asInt()-1; //달라지는 좌표
+        boolean check = false;
+        while(true){
+            //좌표끝도달
+            if(xx == -1) {
+                break;
+            }
+            //check를 false로 바꿈으로 두번연속으로 만나는지 확인할수있게.
+            if(checkValidMove(takes,coord.get("y").asInt(),xx,0)) {
+                check = false;
+                stone1++;
+            }
+            //상대돌을 만나면 탐색중지
+            if(checkValidMove(takes,coord.get("y").asInt(),xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,coord.get("y").asInt(),xx,null)) {
+                //처음 빈공간을만나 check가 true가 됬는데
+                //연달아 빈공간을만나면 탐색중지
+                //두번연속으로 빈공간만날시 blink카운트를 되돌림.
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink1++;
+                    break;
+                }
+                if(blink1 == 1) {
+                    blink1--;
+                } else {
+                    break; //빈공간을만났으나 빈공간을 두번만나면 끝임
+                }
+            }
+            //계속탐색
+            xx--;
+        }
+        // →
+        xx = coord.get("x").asInt()+1; //달라지는 좌표
+        int blink2 = blink1; //blink1남은거만큼 blink2,
+        if(blink1 == 1) {//빈공간을 만나지않은경우 없었음을기록
+            blink1 = 0;
+        }
+        check = false;
+        while(true){
+            //좌표끝도달
+            if(xx == 16) {
+                break;
+            }
+            if(checkValidMove(takes,coord.get("y").asInt(),xx,0)) {
+                check = false;
+                stone2++;
+            }
+            //상대돌을 만나면 탐색중지
+            if(checkValidMove(takes,coord.get("y").asInt(),xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,coord.get("y").asInt(),xx,null)) {
+                //두번연속으로 빈공간만날시 blink카운트를 되돌림.
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink2++;
+                    break;
+                }
+                if(blink2 == 1) {
+                    blink2--;
+                }else {
+                    break; //빈공간을만났으나 빈공간을 두번만나면 끝임
+                }
+            }
+            xx++;
+        }
+
+        allStone = stone1 + stone2;
+        log.info("← → => {}",allStone);
+        //삼삼이므로 돌갯수가 2 + 1(현재돌)이아니면 0리턴
+        //이부분이 43을 허용하게해줌. 33만 찾게됨
+        if(allStone != 2) {
+            return 0;
+        }
+        //돌갯수가 3이면 열린 3인지 파악.
+
+        int left = (stone1 + blink1);
+        int right = (stone2 + blink2);
+
+        //벽으로 막힌경우 - 열린3이 아님
+        if(coord.get("x").asInt() - left == 0 || coord.get("x").asInt() + right == 15) {
+            return 0;
+        }else {//상대돌로 막힌경우 - 열린3이 아님
+            if (takes.stream().anyMatch(t -> t.getX() == (coord.get("x").asInt() - left - 1) && takes.indexOf(t) % 2 == 1)
+                    || takes.stream().anyMatch(t -> t.getX() == (coord.get("x").asInt() + right + 1) && takes.indexOf(t) % 2 == 1)) {
+                return 0;
+            } else {
+                return 1; //열린3 일때 1 리턴
+            }
+        }
+    }
+    // ↖ ↘ 탐색
+    private int validateDoubleThrees2(List<Takes> takes, JsonNode coord) {
+        int stone1 = 0;
+        int stone2 = 0;
+        int allStone = 0;
+        int blink1 = 1;
+
+        // ↖
+        int xx = coord.get("x").asInt()-1;
+        int yy = coord.get("y").asInt()-1;
+        boolean check = false;
+        while(true){
+            if(xx == -1 || yy == -1) {
+                break;
+            }
+            if(checkValidMove(takes,yy,xx,0)){
+                check = false;
+                stone1++;
+            }
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,xx,null)) {
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink1++;
+                    break;
+                }
+                if(blink1 == 1) {
+                    blink1--;
+                } else {
+                    break;
+                }
+            }
+            xx--;
+            yy--;
+        }
+
+        // ↘
+        int blink2 = blink1;
+        blink1 = blink1 == 1 ? 0 : blink1;
+        xx = coord.get("x").asInt()+1;
+        yy = coord.get("y").asInt()+1;
+        check = false;
+        while(true) {
+            if(xx == 16 || yy == 16) {
+                break;
+            }
+            if(checkValidMove(takes,yy,xx,0)) {
+                check = false;
+                stone2++;
+            }
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,xx,null)) {
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink2++;
+                    break;
+                }
+                if(blink2 == 1) {
+                    blink2--;
+                }else {
+                    break;
+                }
+            }
+            xx++;
+            yy++;
+        }
+
+        allStone = stone1 + stone2;
+        log.info("↖ ↘ => {}",allStone);
+        if(allStone != 2) {
+            return 0;
+        }
+
+        int leftUp = (stone1 + blink1);
+        int rightDown = (stone2 + blink2);
+
+        if(coord.get("y").asInt() - leftUp == 0 || coord.get("x").asInt() - leftUp == 0
+                || coord.get("y").asInt() + rightDown == 15 || coord.get("x").asInt() + rightDown == 15) {
+            return 0;
+        }else
+        if(takes.stream().anyMatch(take -> take.getY() == (coord.get("y").asInt() - leftUp -1)
+                && take.getX() == (coord.get("x").asInt() - leftUp - 1) && takes.indexOf(take) % 2 == 1)
+                || takes.stream().anyMatch(take -> take.getY() == (coord.get("y").asInt() + rightDown + 1)
+                && take.getX() == (coord.get("x").asInt() + rightDown + 1) && takes.indexOf(take) % 2 == 1)){
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+    // ↑ ↓ 탐색
+    private int validateDoubleThrees3(List<Takes> takes, JsonNode coord) {
+        int stone1 = 0;
+        int stone2 = 0;
+        int allStone = 0;
+        int blink1 = 1;
+
+        // ↑
+        int yy = coord.get("y").asInt()-1;
+        boolean check = false;
+        while(true) {
+            if(yy == -1) {
+                break;
+            }
+            if(checkValidMove(takes,yy,coord.get("x").asInt(),0)) {
+                check = false;
+                stone1++;
+            }
+            if(checkValidMove(takes,yy,coord.get("x").asInt(),1)) {
+                break;
+            }
+
+            if(!checkValidMove(takes,yy,coord.get("x").asInt(),null)) {
+                if(check == false) {
+                    check = true;
+                } else {
+                    blink1++;
+                    break;
+                }
+
+                if(blink1 == 1) {
+                    blink1--;
+                }else {
+                    break;
+                }
+            }
+            yy--;
+        }
+
+        // ↓
+        int blink2 = blink1;
+        blink1 = blink1 == 1 ? 0 : blink1;
+        yy = coord.get("y").asInt() + 1;
+        check = false;
+        while(true) {
+            if(yy == 16) {
+                break;
+            }
+            if(checkValidMove(takes,yy,coord.get("x").asInt(),0)) {
+                check = false;
+                stone2++;
+            }
+            if(checkValidMove(takes,yy,yy,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,coord.get("x").asInt(),null)) {
+                if(check == false) {
+                    check = true;
+                } else {
+                    blink2++;
+                    break;
+                }
+                if(blink2 == 1) {
+                    blink2--;
+                } else {
+                    break;
+                }
+            }
+            yy++;
+        }
+
+        allStone = stone1 + stone2;
+        log.info("↑ ↓ => {}",allStone);
+        if(allStone != 2) {
+            return 0;
+        }
+
+        int up = (stone1 + blink1);
+        int down = (stone2 + blink2);
+
+        if(coord.get("y").asInt() - up == 0 || coord.get("y").asInt() + down == 15) {
+            return 0;
+        } else {
+            if(takes.stream().anyMatch(take -> take.getY() == (coord.get("y").asInt() - up - 1)
+                    && take.getX() == coord.get("x").asInt() && takes.indexOf(take) % 2 == 1)
+                    || takes.stream().anyMatch(take -> take.getY() == (coord.get("y").asInt() + down + 1)
+                    && take.getX() == coord.get("x").asInt() && takes.indexOf(take) % 2 == 1)){
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+    }
+    // ／ 탐색
+    // ↙ ↗ 탐색
+    private int validateDoubleThrees4(List<Takes> takes, JsonNode coord) {
+        int stone1 = 0;
+        int stone2 = 0;
+        int allStone = 0;
+        int blink1 = 1;
+
+        // ↙
+        int xx = coord.get("x").asInt()-1;
+        int yy = coord.get("y").asInt()+1;
+        boolean check = false;
+        while(true) {
+            if(xx == -1 || yy == 16) {
+                break;
+            }
+            if(checkValidMove(takes,yy,xx,0)) {
+                check = false;
+                stone1++;
+            }
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,xx,null)) {
+                if(check == false) {
+                    check = true;
+                } else {
+                    blink1++;
+                    break;
+                }
+                if(blink1 == 1) {
+                    blink1--;
+                }else {
+                    break;
+                }
+            }
+            xx--;
+            yy++;
+        }
+
+        // ↗
+        int blink2 = blink1;
+        blink1 = blink1 == 1 ? 0 : blink1;
+        xx = coord.get("x").asInt() + 1;
+        yy = coord.get("y").asInt() - 1;
+        check = false;
+        while(true) {
+            if(xx == 16 || yy == -1) {
+                break;
+            }
+            if(checkValidMove(takes,yy,xx,0)) {
+                check = false;
+                stone2++;
+            }
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,xx,null)) {
+                if(check == false) {
+                    check = true;
+                } else {
+                    blink2++;
+                    break;
+                }
+
+                if(blink2 == 1) {
+                    blink2--;
+                } else {
+                    break;
+                }
+            }
+            xx++;
+            yy--;
+        }
+
+        allStone = stone1 + stone2;
+        log.info("↙ ↗ => {}",allStone);
+        if (allStone != 2) {
+            return 0;
+        }
+
+        int leftDown = (stone1 + blink1);
+        int rightUp = (stone2 + blink2);
+
+        if(coord.get("x").asInt() - leftDown == 0 || coord.get("y").asInt() - rightUp == 0
+                || coord.get("y").asInt() + leftDown == 15 || coord.get("x").asInt() + rightUp == 15) {
+            return 0;
+        }else {
+            if(takes.stream().anyMatch(take -> take.getY() == (coord.get("y").asInt() + leftDown + 1)
+                    && take.getX() == (coord.get("x").asInt() - leftDown - 1) && takes.indexOf(take) % 2 == 1)
+                    || takes.stream().anyMatch(take -> take.getY() == (coord.get("y").asInt() - rightUp - 1)
+                    && take.getX() == (coord.get("x").asInt() + rightUp + 1) && takes.indexOf(take) % 2 == 1)){
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+    }
+
+    private boolean checkValidMove(List<Takes> takes, int y, int x, Integer type){
+        return takes.stream().anyMatch(take -> take.getX() == x
+                && take.getY() == y
+                && (type == null || takes.indexOf(take) % 2 == type));
+    }
+
+    /********************************************************************************************************************/
+
+
+    /***********************************************************44*******************************************************/
+    //열리는건 문제 x 그냥 4의 갯수를 담는변수가 2개이상이면 44
+    //똑같이 빈공간은 하나만 허용
+    // 4가지 부분으로 로나누어 풀수있음
+    private boolean omok44Rule(List<Takes> takes, JsonNode coord) {
+        int count = 0;
+        count += validateDoubleFours1(1,takes,coord);
+        count += validateDoubleFours2(1,takes,coord);
+        count += validateDoubleFours3(1,takes,coord);
+        count += validateDoubleFours4(1,takes,coord);
+
+        if(count >= 2) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+
+    // ← → 탐색
+    private int validateDoubleFours1(int trigger,List<Takes> takes, JsonNode coord) {
+        int stone1 = 0;
+        int stone2 = 0;
+        int allStone = 0;
+        //열린4인지는 상관은없음. 다만 코드상 빈공간만을 의미.
+        int blink1 = 1;
+        blink1 = trigger == 3 ? 0 : blink1; // 5목달성조건은 빈공간없이 5개가 이어져야함.
+
+        // ←  탐색
+        int yy = coord.get("y").asInt();
+        int xx = coord.get("x").asInt() - 1;
+        boolean check = false;
+        while(true) {
+            if(xx == -1) {
+                break;
+            }
+
+            if(checkValidMove(takes,yy,xx,0)) {
+                check = false;
+                stone1++;
+            }
+
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+
+            if(!checkValidMove(takes,yy,xx,null)) {
+                //두번연속으로 빈공간만날시 blink카운트를 되돌림.
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink1++;
+                    break;
+                }
+                if(blink1 == 1) {
+                    blink1--;
+                }else {
+                    break; //빈공간을만났으나 빈공간을 두번만나면 끝임
+                }
+            }
+            xx--;
+        }
+
+        // → 탐색
+        xx = coord.get("x").asInt() + 1;
+        yy = coord.get("y").asInt();
+        int blink2 = blink1;
+        check = false;
+        while(true) {
+            if(xx == 16) {
+                break;
+            }
+            if(checkValidMove(takes,yy,xx,0)) {
+                check = false;
+                stone2++;
+            }
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,xx,null)) {
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink2++;
+                    break;
+                }
+                if(blink2 == 1) {
+                    blink2--;
+                }else {
+                    break;
+                }
+            }
+            xx++;
+        }
+
+        allStone = stone1 + stone2;
+
+        //사사찾는 트리거
+        if (trigger == 1) {
+            if (allStone != 3) {
+                return 0; //놓은돌제외 3개아니면 4가아니니까.
+            } else {
+                return 1; //놓은돌제외 3개면 4임. 닫히고 열린지는 상관없음.
+            }
+        }
+
+        //장목찾는 트리거
+        if (trigger == 2) {
+            //현재놓은돌 +1 +5 => 6목이상은 장목. 여기서 놓은돌기준 두방향모두 돌이있어야 장목
+            if(allStone >= 5 && stone1 != 0 && stone2 != 0) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+
+        if(trigger == 3) {
+            //놓은돌포함 5개의돌이완성되면.
+            if(allStone == 4) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+        //그럴일을없지만 1 도 2도아니면 0리턴
+        return 0;
+    }
+
+    // ↖ ↘ 탐색
+    private int validateDoubleFours2(int trigger,List<Takes> takes, JsonNode coord) {
+        int stone1 = 0;
+        int stone2 = 0;
+        int allStone = 0;
+        int blink1 = 1;
+        blink1 = trigger == 3 ? 0 : blink1;
+
+        // ↖  탐색
+        int yy = coord.get("y").asInt() - 1;
+        int xx = coord.get("x").asInt() - 1;
+        boolean check = false;
+        while(true) {
+            if(xx == -1 || yy == -1) {
+                break;
+            }
+            if(checkValidMove(takes,yy,xx,0)) {
+                check = false;
+                stone1++;
+            }
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,xx,null)) {
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink1++;
+                    break;
+                }
+
+                if(blink1 == 1) {
+                    blink1--;
+                }else {
+                    break;
+                }
+            }
+            xx--;
+            yy--;
+        }
+
+        // ↘  탐색
+        yy = coord.get("y").asInt() + 1;
+        xx = coord.get("x").asInt() + 1;
+        check = false;
+        int blink2 = blink1;
+        while(true) {
+            if(xx == 16 || yy == 16) {
+                break;
+            }
+            if(checkValidMove(takes,yy,xx,0)) {
+                check = false;
+                stone2++;
+            }
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,xx,null)) {
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink2++;
+                    break;
+                }
+                if(blink2 == 1) {
+                    blink2--;
+                }else {
+                    break;
+                }
+            }
+            xx++;
+            yy++;
+        }
+
+        allStone = stone1 + stone2;
+
+        if (trigger == 1) {
+            if (allStone != 3) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+
+        if (trigger == 2) {
+            if(allStone >= 5 && stone1 != 0 && stone2 != 0) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+
+        if(trigger == 3) {
+            if(allStone == 4) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+        return 0;
+    }
+    // ↑ ↓ 탐색
+    private int validateDoubleFours3(int trigger,List<Takes> takes, JsonNode coord) {
+        int stone1 = 0;
+        int stone2 = 0;
+        int allStone = 0;
+        int blink1 = 1;
+        blink1 = trigger == 3 ? 0 : blink1;
+
+        // ↑  탐색
+        int yy = coord.get("y").asInt() - 1;
+        int xx = coord.get("x").asInt();
+        boolean check = false;
+        while(true) {
+            if(yy == -1) {
+                break;
+            }
+            if(checkValidMove(takes,yy,xx,0)) {
+                check = false;
+                stone1++;
+            }
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,xx,null)) {
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink1++;
+                    break;
+                }
+                if(blink1 == 1) {
+                    blink1--;
+                }else {
+                    break;
+                }
+            }
+            yy--;
+        }
+
+        // ↓  탐색
+        yy = coord.get("y").asInt() + 1;
+        xx = coord.get("x").asInt();
+        check = false;
+        int blink2 = blink1;
+        while(true) {
+            if(yy == 16) {
+                break;
+            }
+            if(checkValidMove(takes,yy,xx,0)) {
+                check = false;
+                stone2++;
+            }
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,xx,null)) {
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink2++;
+                    break;
+                }
+                if(blink2 == 1) {
+                    blink2--;
+                }else {
+                    break;
+                }
+            }
+            yy++;
+        }
+
+        allStone = stone1 + stone2;
+
+        if (trigger == 1) {
+            if (allStone != 3) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+
+        if (trigger == 2) {
+            if(allStone >= 5 && stone1 != 0 && stone2 != 0) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+        if(trigger == 3) {
+            if(allStone == 4) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+
+        return 0;
+    }
+
+    // ↗ ↙ 탐색
+    private int validateDoubleFours4(int trigger ,List<Takes> takes, JsonNode coord) {
+        int stone1 = 0;
+        int stone2 = 0;
+        int allStone = 0;
+        int blink1 = 1;
+        blink1 = trigger == 3 ? 0 : blink1;
+
+        // ↗ 탐색
+        int yy = coord.get("y").asInt() - 1;
+        int xx = coord.get("x").asInt() + 1;
+        boolean check = false;
+        while(true) {
+            if(xx == 16 || yy == -1) {
+                break;
+            }
+            if(checkValidMove(takes,yy,xx,0)) {
+                check = false;
+                stone1++;
+            }
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,xx,null)) {
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink1++;
+                    break;
+                }
+                if(blink1 == 1) {
+                    blink1--;
+                }else {
+                    break;
+                }
+            }
+            xx++;
+            yy--;
+        }
+
+        // ↙ 탐색
+        yy = coord.get("y").asInt() + 1;
+        xx = coord.get("x").asInt() - 1;
+        check = false;
+        int blink2 = blink1;
+        while(true) {
+            if(xx == -1 || yy == 16) {
+                break;
+            }
+            if(checkValidMove(takes,yy,xx,0)) {
+                check = false;
+                stone2++;
+            }
+            if(checkValidMove(takes,yy,xx,1)) {
+                break;
+            }
+            if(!checkValidMove(takes,yy,xx,null)) {
+                if(check == false) {
+                    check = true;
+                }else {
+                    blink2++;
+                    break;
+                }
+                if(blink2 == 1) {
+                    blink2--;
+                }else {
+                    break;
+                }
+            }
+            xx--;
+            yy++;
+        }
+
+        allStone = stone1 + stone2;
+
+        if (trigger == 1) {
+            if (allStone != 3) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+        if (trigger == 2) {
+            if(allStone >= 5 && stone1 != 0 && stone2 != 0) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+        if(trigger == 3) {
+            if(allStone == 4) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+        return 0;
+    }
+    /********************************************************************************************************************/
+
+
+    /***********************************************************장목*******************************************************/
+    private boolean omokJangmokRule(List<Takes> takes, JsonNode coord) {
+        int result = 0;
+        result += validateDoubleFours1(2,takes,coord);
+        result += validateDoubleFours2(2,takes,coord);
+        result += validateDoubleFours3(2,takes,coord);
+        result += validateDoubleFours4(2,takes,coord);
+
+        if(result >= 1) {//하나라도 장목수가있으면
+            return true;
+        }
+        return false;
+    }
+    /********************************************************************************************************************/
 }
+
+
+
+
+
 
 
