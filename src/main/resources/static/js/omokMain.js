@@ -8,6 +8,7 @@ let broadMessage = [];
 let isStart = false;
 let isFirst = true;
 let myId;
+let roomName;
 
 const audio = new Audio('../audio/stoneSound.wav');
 
@@ -15,16 +16,30 @@ const audio = new Audio('../audio/stoneSound.wav');
 window.addEventListener("message", function (message) {
     if (message.data instanceof Object) {
         const receivedMessage = message.data;
+        console.log(receivedMessage);
         const blackDiv = document.querySelector('.gameParticipants_blackColor');
         const whiteDiv = document.querySelector('.gameParticipants_whiteColor');
         switch (receivedMessage.type) {
+            case 'error' :
+                window.parent.document.querySelector('.alertPopup_text').innerText = receivedMessage.data;
+                window.parent.document.querySelector('.alertPopup').style.display = '';
+                break;
             case 'start' :
                 isStart = true;
                 document.querySelector('.gameStart_button').disabled = true;
+                document.querySelector('#moveViewer').disabled = true;
+                document.querySelector('#leaveRoom').disabled = true;
+                if(myId == document.querySelectorAll('.gameParticipants_playername')[1].innerText) {
+                    document.querySelector('#giveUp').disabled = true;
+                    document.querySelector('#undoMove').disabled = true;
+                }
                 document.querySelector('.board').style.cursor = 'pointer';
                 loadOmokBoard();
                 break;
             case 'end' : //게임 종료
+                document.querySelector('#moveViewer').disabled = false;
+                document.querySelector('#leaveRoom').disabled = false;
+                publicRoom = [roomName,"","",[]];
                 GameEndScreen(receivedMessage.data);
                 break;
             case 'roomList' : //방 목록 조회
@@ -33,6 +48,7 @@ window.addEventListener("message", function (message) {
             case 'joinRoom' : //방 입장
                 isFirst = true;
                 broadMessage = [];
+                roomName = receivedMessage.data.name;
                 publicRoom = [receivedMessage.data.name,
                     receivedMessage.data.blackPlayer == null ? "" : receivedMessage.data.blackPlayer,
                     receivedMessage.data.whitePlayer == null ? "" : receivedMessage.data.whitePlayer,
@@ -46,10 +62,16 @@ window.addEventListener("message", function (message) {
                     isFirst = false;
                     myId = receivedMessage.data.replace("[입장] => ","");
                 }
+                if(receivedMessage.data.indexOf('[쌍삼] => ') > -1){
+                    myTurn = true;
+                }
                 createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
+                document.querySelector('#messages').scrollTop = document.querySelector('#messages').scrollHeight;
                 break;
             case 'player_select' : //해당 player turn 지정
                 myTurn = true;
+                document.querySelector('#giveUp').disabled = false;
+                document.querySelector('#undoMove').disabled = false;
                 loadOmokBoard();
                 break;
             case 'changeRole' :
@@ -60,6 +82,7 @@ window.addEventListener("message", function (message) {
                     publicRoom[2] !== "") {
                     publicRoom[3] = [];
                 }
+                loadOmokBoard();
                 createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
                 break;
             case 'move' : //오목판 reload
@@ -78,6 +101,10 @@ window.addEventListener("message", function (message) {
                 }
                 loadOmokBoard();
                 break;
+            case 'undoMove' :
+                publicRoom[3] = receivedMessage.data;
+                loadOmokBoard();
+                break;
         }
     }
 });
@@ -94,12 +121,34 @@ function messageLine(msg) {
 
 //방 나가기 버튼 클릭 시 발생 함수
 function leaveRoom(){
-    document.querySelector('.exitPopup').style.display = '';
+    if(isStart){
+        return;
+    }
+    setVisible('.exitPopup');
 }
 
 //관전하기 버튼 클릭 시 발생 함수
 function moveViewer() {
+    if(isStart){
+        return;
+    }
     parentToMessage({type: 'changeRole', data: 'viewer'});
+}
+
+//항복하기 버튼 클릭 시 발생 함수
+function giveUp(){
+    if(!myTurn || !isStart){
+        return;
+    }
+    setVisible('.giveUpPopup');
+}
+
+//무르기 버튼 클릭 시 발생 함수
+function undoMove(){
+    if(!myTurn || publicRoom[3].length < 2){
+        return;
+    }
+    setVisible('.undoMovePopup');
 }
 
 //방 만들기 버튼 클릭 시 발생 함수
@@ -155,7 +204,7 @@ function roomInfo(room) {
 //방 입장 시 오목판 우측에 요소 생성 함수
 function createGameParticipants(roomName, blackPlayer, whitePlayer) {
     const gamePanel = document.querySelector(".gameParticipants");
-    const startBtnDisabled = !((blackPlayer !== '' && whitePlayer !== '') && myId === blackPlayer);
+    const startBtnDisabled = !((blackPlayer !== '' && whitePlayer !== '') && myId === blackPlayer) || isStart;
     gamePanel.innerHTML = `
       <div class="gameParticipants_main">
         <h3 class="gameParticipants_title">${roomName}</h3>
@@ -184,13 +233,17 @@ function createGameParticipants(roomName, blackPlayer, whitePlayer) {
           </div>
         </div>
         <div class="gameParticipants_message">
-          <p>${broadMessage.map(messageLine).join("")}</p>
+          <p id="messages">${broadMessage.map(messageLine).join("")}</p>
         </div>
         <button class="gameStart_button" ${startBtnDisabled === true ? `disabled="true"` : ``} onclick="gameStart()">게임시작</button>
       </div>
       <div class="gameParticipants_buttons">
-        <button class="gameParticipants_button" onclick="moveViewer()">관전하기</button>
-        <button class="gameParticipants_button" onclick="leaveRoom()">방 나가기</button>
+        <button class="gameParticipants_button" id="giveUp" onclick="giveUp()">항복</button>
+        <button class="gameParticipants_button" id="undoMove" onclick="undoMove()">무르기</button>
+      </div>
+      <div class="gameParticipants_buttons">
+        <button class="gameParticipants_button" id="moveViewer" onclick="moveViewer()">관전하기</button>
+        <button class="gameParticipants_button" id="leaveRoom" onclick="leaveRoom()">방 나가기</button>
       </div>
     `;
 }
@@ -217,14 +270,18 @@ function handleBoardLeave() {
 
 //오목판 클릭 시 이벤트
 function handleBoardClick(thisCoord) {
-    myTurn = false;
-    if (publicRoom[3].find((take) => take.x === thisCoord.x && take.y === thisCoord.y) !== undefined) {
-        return;
-    } else {
-        coord = thisCoord;
+    if (isStart) {
+        myTurn = false;
+        if (publicRoom[3].find((take) => take.x === thisCoord.x && take.y === thisCoord.y) !== undefined) {
+            return;
+        } else {
+            coord = thisCoord;
+        }
+        audio.play();
+        parentToMessage({type: 'move', data: coord});
+        document.querySelector('#giveUp').disabled = true;
+        document.querySelector('#undoMove').disabled = true;
     }
-    audio.play();
-    parentToMessage({type: 'move', data : coord});
 }
 
 //오목판 Load 함수
@@ -318,35 +375,58 @@ function handleStoneEvent(onBoardEnter,onBoardLeave,onBoardClick) {
 //게임 승자 발생 시 팝업 호출 함수
 function GameEndScreen(winner){
     const text = `${winner} is winner!`;
-    document.querySelector('.endPopup').style.display = '';
+    setVisible('.endPopup');
     document.querySelector('.endPopup_text').innerText = text;
 }
 
 //게임 승자 팝업 닫기 함수
 function onGameEnd(){
     isStart = false;
-    document.querySelector('.endPopup').style.display = 'none';
+    setInvisible('.endPopup');
 }
 
 //게임 시작 함수
 function onGameStart(){
-    document.querySelector('.startPopup').style.display = 'none';
+    setInvisible('.startPopup');
     parentToMessage({type: 'start'});
 }
 
 //게임 시작 팝업 취소 함수
 function onGameStartWait(){
-    document.querySelector('.startPopup').style.display = 'none';
+    setInvisible('.startPopup');
 }
 
 //방 나가기 함수
 function onGameExit(){
-    document.querySelector('.exitPopup').style.display = 'none';
+    setInvisible('.exitPopup');
     parentToMessage({type: 'leaveRoom'});
 }
 //방 나가기 취소 함수
 function onGameExitCancel(){
-    document.querySelector('.exitPopup').style.display = 'none';
+    setInvisible('.exitPopup');
+}
+
+//항복 함수
+function onGiveUp(){
+    setInvisible('.giveUpPopup');
+    const color = myId == document.querySelectorAll('.gameParticipants_playername')[0].innerText ? 'black' : 'white';
+    parentToMessage({type: 'giveUp', color: color});
+}
+
+//항복 취소 함수
+function onGiveUpCancel(){
+    setInvisible('.giveUpPopup');
+}
+
+//항복 함수
+function onUndoMove(){
+    setInvisible('.undoMovePopup');
+    parentToMessage({type: 'undoMove'});
+}
+
+//항복 취소 함수
+function onUndoMoveCancel(){
+    setInvisible('.undoMovePopup');
 }
 
 //게임시작 팝업 띄우기
@@ -355,6 +435,14 @@ function gameStart(){
         if(myId !== publicRoom[1]){
             return;
         }
-        document.querySelector('.startPopup').style.display = '';
+        setVisible('.startPopup');
     }
+}
+
+function setInvisible(div){
+    document.querySelector(div).style.display = 'none';
+}
+
+function setVisible(div){
+    document.querySelector(div).style.display = '';
 }

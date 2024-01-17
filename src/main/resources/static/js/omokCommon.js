@@ -15,8 +15,7 @@ window.onload = function() {
         childFrame = document.getElementById('frameElement');
         switch (receivedMessage.type) {
             case 'error' :
-                document.querySelector('.alertPopup_text').innerText = receivedMessage.data;
-                document.querySelector('.alertPopup').style.display = '';
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             case 'start' :
                 childFrame.contentWindow.postMessage(receivedMessage, '*');
