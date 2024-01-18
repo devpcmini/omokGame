@@ -8,7 +8,65 @@
 <body>
     <link href="/css/style.css" rel="stylesheet" type="text/css" id="custom-stylesheet"/>
     <script src="/js/omokMain.js"></script>
-    <div id="waitingRoom" class="waitingRoom">
+    <div id="login" style="width: 100%; height: 100%">
+        <div class="loginWrap">
+            <div class="loginHtml">
+                <input id="tab-1" type="radio" name="tab" class="sign-in" checked><label for="tab-1" class="tab">로그인</label>
+                <input id="tab-2" type="radio" name="tab" class="sign-up"><label for="tab-2" class="tab">회원가입</label>
+                <div class="loginForm">
+                    <form id="signInForm">
+                        <div class="signIn">
+                            <div class="group">
+                                <label for="signInUser" class="label">사용자명</label>
+                                <input id="signInUser" type="text" class="input" autoComplete="false">
+                            </div>
+                            <div class="group">
+                                <label for="signInPass" class="label">비밀번호</label>
+                                <input id="signInPass" class="input" data-type="password" autoComplete="false">
+                            </div>
+                            <div class="group">
+                                <input id="signInCheck" type="checkbox" class="check" checked>
+                                <label for="signInCheck"><span class="icon"></span> 아이디 기억하기</label>
+                            </div>
+                            <div class="group">
+                                <input type="submit" class="button" value="로그인">
+                            </div>
+                            <div class="hr"></div>
+                            <div class="foot-lnk">
+                                <button style="border: 0px">비밀번호 찾기</button>
+                            </div>
+                        </div>
+                    </form>
+                    <form id="signUpForm">
+                        <div class="signUp">
+                            <div class="group">
+                                <label for="signUpUser" class="label">사용자명</label>
+                                <input id="signUpUser" type="text" class="input">
+                            </div>
+                            <div class="group">
+                                <label for="signUpPass" class="label">비밀번호</label>
+                                <input id="signUpPass" class="input" data-type="password" autoComplete="false">
+                            </div>
+                            <div class="group">
+                                <label for="signUpRepeatPass" class="label">비밀번호 확인</label>
+                                <input id="signUpRepeatPass" class="input" data-type="password" autoComplete="false">
+                            </div>
+                            <div class="group">
+                                <label for="signUpEmail" class="label">이메일 주소</label>
+                                <input id="signUpEmail" type="text" class="input">
+                            </div>
+                            <div class="group">
+                                <input type="submit" class="button" value="회원가입">
+                            </div>
+                            <div class="hr"></div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="waitingRoom" class="waitingRoom" style="display: none">
+        <div id="waitingRoom_overlay" class="overlay"></div>
         <div class="newRoom">
             <form class="newRoom_form" onSubmit="handleNewRoom(event)">
                 <input class="newRoom_input" type="text" name="roomName" placeholder="방 이름">
@@ -19,8 +77,18 @@
             <h3 style="text-align: center;">방 목록</h3>
             <ul id="roomList_container" class="roomList_container"></ul>
         </div>
+        <div class="acceptPopup" style="display: none">
+            <div class="acceptPopup_main">
+                <h3 class="acceptPopup_text"></h3>
+                <div class="acceptPopup_btnDiv">
+                    <button class="acceptPopup_button" onclick="onAccept()">수락</button>
+                    <button class="acceptPopup_button" onclick="onReject()">거절</button>
+                </div>
+            </div>
+        </div>
     </div>
     <div class="gaming-room" style="display: none">
+        <div id="gamingRoom_overlay" class="overlay"></div>
         <div class="board">
         </div>
         <div class="gameParticipants">
@@ -31,6 +99,17 @@
                 <div class="startPopup_btnDiv">
                     <button class="startPopup_button" onClick="onGameStart()">예</button>
                     <button class="startPopup_button" onClick="onGameStartWait()">아니오</button>
+                </div>
+            </div>
+        </div>
+        <div class="invitePopup" style="display: none">
+            <div class="invitePopup_main">
+                <h3 class="invitePopup_text">초대할 유저 선택</h3>
+                <div class="invitePopup_userList">
+                </div>
+                <div class="invitePopup_btnDiv">
+                    <button class="invitePopup_button" onclick="onInvite()">초대하기</button>
+                    <button class="invitePopup_button" onclick="onInviteCancel()">닫기</button>
                 </div>
             </div>
         </div>

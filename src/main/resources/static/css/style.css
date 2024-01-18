@@ -1,5 +1,9 @@
 /* @import "./reset.css"; */
 
+html {
+    height: 100%;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -157,8 +161,8 @@ body {
     height: 90%;
     display: flex;
     flex-direction: column;
-    justify-content: start;
     align-items: flex-start;
+    justify-content: space-evenly;
 }
 
 .gameParticipants_title {
@@ -236,7 +240,7 @@ body {
     margin: 20px 0 10px 0;
     padding: 15px 0;
     width: 100%;
-    height: calc(100% - 275px);
+    height: calc(56vh - 310px);
     display: flex;
     flex-direction: column-reverse;
     justify-content: center;
@@ -586,6 +590,190 @@ body {
     transform: scale(1.1);
 }
 
+@keyframes blink_turn {
+    0% { opacity : 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+
+.blink_turn {
+    animation: blink_turn 1s infinite;
+}
+
+#messages .systemMessage {
+    color : #957839;
+    font-size: 2vh;
+}
+
+#messages .userMessage {
+    color : #4E6C87;
+    font-size: 2vh;
+}
+
+.gameParticipants_sendForm {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+#messageInput {
+    margin-right: 4px;
+    min-width: 0px;
+    height: 30px;
+    border-radius: 33px;
+    box-sizing: border-box;
+    padding-left: 15px;
+    width: 80%;
+}
+
+#sendMessage {
+    width: 17%;
+    height: 30px;
+    margin-top: auto;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 0px;
+    transition: transform 0.3s ease-in-out;
+}
+
+#sendMessage:hover {
+    transform: scale(1.1);
+}
+
+.overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+.invitePopup {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.invitePopup_main {
+    width: 40%;
+    height: 65%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: white;
+    border: 7px solid #866a45;
+    border-radius: 20px;
+}
+
+.invitePopup_text {
+    margin-top: 20px;
+}
+
+.invitePopup_userList {
+    height: 100%;
+    width: 100%;
+    text-align: center;
+    margin: 10px 10px;
+    overflow-y: scroll;
+}
+
+.invitePopup_user {
+    background-color: white;
+    cursor: pointer;
+}
+
+.invitePopup_user.clicked {
+    background-color: #cda562;
+}
+
+.invitePopup_button {
+    width: 70px;
+    margin-bottom: 10px;
+    padding: 5px;
+    cursor: pointer;
+    background-color: #f3c271;
+    border-radius: 33px;
+    transition: transform 0.3s ease-in-out;
+}
+
+.invitePopup_button:hover {
+    transform: scale(1.1);
+}
+
+.acceptPopup {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.acceptPopup_main {
+    width: 40%;
+    height: 20%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: white;
+    border: 7px solid #866a45;
+    border-radius: 20px;
+}
+
+.acceptPopup_text {
+    margin: 20px 20px;
+    text-align: center;
+}
+
+.acceptPopup_userList {
+    height: 100%;
+    width: 100%;
+    text-align: center;
+    margin: 10px 10px;
+    overflow-y: scroll;
+}
+
+.acceptPopup_user {
+    background-color: white;
+    cursor: pointer;
+}
+
+.acceptPopup_user.clicked {
+    background-color: #cda562;
+}
+
+.acceptPopup_button {
+    width: 70px;
+    margin-bottom: 10px;
+    padding: 5px;
+    cursor: pointer;
+    background-color: #f3c271;
+    border-radius: 33px;
+    transition: transform 0.3s ease-in-out;
+}
+
+.acceptPopup_button:hover {
+    transform: scale(1.1);
+}
+
+#myId {
+    text-align: right;
+    margin-right: 40%;
+    width: 100%;
+    margin-top: 10px;
+}
+
 @media screen and (orientation: portrait) {
     body {
         width: 100%;
@@ -637,12 +825,158 @@ html::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(to bottom, #f3c271, #866a45);
 }
 
-@keyframes blink_turn {
-    0% { opacity : 1; }
-    50% { opacity: 0.3; }
-    100% { opacity: 1; }
+/* 로그인창 */
+.loginWrap{
+    width:100%;
+    margin:auto;
+    max-width:525px;
+    min-height:670px;
+    position:relative;
+    box-shadow:0 12px 15px 0 rgba(0,0,0,.24),0 17px 50px 0 rgba(0,0,0,.19);
+}
+.loginHtml{
+    width:100%;
+    height:100%;
+    position:absolute;
+    padding:90px 70px 50px 70px;
+}
+.loginHtml .signIn,
+.loginHtml .signUp{
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    position:absolute;
+    transform:rotateY(180deg);
+    backface-visibility:hidden;
+    transition:all .4s linear;
+}
+.loginHtml .sign-in,
+.loginHtml .sign-up,
+.loginForm .group .check{
+    display:none;
+}
+.loginHtml .tab,
+.loginForm .group .label,
+.loginForm .group .button{
+    text-transform:uppercase;
+}
+.loginHtml .tab{
+    font-size:22px;
+    margin-right:15px;
+    padding-bottom:5px;
+    margin:0 15px 10px 0;
+    display:inline-block;
+    border-bottom:2px solid transparent;
+    cursor: pointer;
 }
 
-.blink_turn {
-    animation: blink_turn 1s infinite;
+.loginHtml .sign-in:checked + .tab,
+.loginHtml .sign-up:checked + .tab{
+    color: black;
+    border-color:#1161ee;
 }
+.loginForm{
+    min-height:345px;
+    position:relative;
+    perspective:1000px;
+    transform-style:preserve-3d;
+}
+.loginForm .group{
+    margin-bottom:15px;
+}
+.loginForm .group .label,
+.loginForm .group .input,
+.loginForm .group .button{
+    width:100%;
+    color:black;
+    display:block;
+}
+.loginForm .group .input,
+.loginForm .group .button{
+    border:none;
+    padding:15px 20px;
+    border-radius:25px;
+    background:rgba(255,255,255,.1);
+}
+.loginForm .group input[data-type="password"]{
+    text-security:circle;
+    -webkit-text-security:circle;
+}
+.loginForm .group .label{
+    color:#aaa;
+    font-size:12px;
+}
+.loginForm .group .button{
+    color: white;
+    background:#1161ee;
+}
+.loginForm .group label .icon{
+    width:15px;
+    height:15px;
+    border-radius:2px;
+    position:relative;
+    display:inline-block;
+    background:rgba(255,255,255,.1);
+}
+.loginForm .group label .icon:before,
+.loginForm .group label .icon:after{
+    content:'';
+    width:10px;
+    height:2px;
+    background:#fff;
+    position:absolute;
+    transition:all .2s ease-in-out 0s;
+}
+.loginForm .group label .icon:before{
+    left:3px;
+    width:5px;
+    bottom:6px;
+    transform:scale(0) rotate(0);
+}
+.loginForm .group label .icon:after{
+    top:6px;
+    right:0;
+    transform:scale(0) rotate(0);
+}
+.loginForm .group .check:checked + label{
+    color: black;
+}
+.loginForm .group .check:checked + label .icon{
+    background:#1161ee;
+}
+.loginForm .group .check:checked + label .icon:before{
+    transform:scale(1) rotate(45deg);
+}
+.loginForm .group .check:checked + label .icon:after{
+    transform:scale(1) rotate(-45deg);
+}
+.loginHtml .sign-in:checked + .tab + .sign-up + .tab + .loginForm .signIn{
+    transform:rotate(0);
+}
+.loginHtml .sign-up:checked + .tab + .loginForm .signUp{
+    transform:rotate(0);
+}
+
+.hr{
+    height:2px;
+    margin:60px 0 50px 0;
+    background:rgba(255,255,255,.2);
+}
+.foot-lnk{
+    text-align:center;
+}
+
+.foot-lnk button{
+    color : #5a6181;
+}
+
+body {
+    margin:0;
+    color:#a3add9;
+    font:600 16px/18px 'Open Sans',sans-serif;
+}
+*,:after,:before{box-sizing:border-box}
+.clearfix:after,.clearfix:before{content:'';display:table}
+.clearfix:after{clear:both;display:block}
+a{color:inherit;text-decoration:none}
