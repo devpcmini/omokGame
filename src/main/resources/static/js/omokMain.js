@@ -9,6 +9,7 @@ let isStart = false;
 let isFirst = true;
 let myId;
 let roomName;
+let joinMessage;
 
 const audio = new Audio('../audio/stoneSound.wav');
 
@@ -23,11 +24,12 @@ window.addEventListener("message", function (message) {
             case 'error' :
                 window.parent.document.querySelector('.alertPopup_text').innerText = receivedMessage.data;
                 window.parent.document.querySelector('.alertPopup').style.display = '';
+                window.parent.document.querySelector('#parent_overlay').style.display = 'block';
                 break;
             case 'start' :
                 isStart = true;
                 document.querySelector('.gameStart_button').disabled = true;
-                document.querySelector('#moveViewer').disabled = true;
+                document.querySelector('#inviteUser').disabled = true;
                 document.querySelector('#leaveRoom').disabled = true;
                 if(myId == document.querySelectorAll('.gameParticipants_playername')[1].innerText) {
                     document.querySelector('#giveUp').disabled = true;
@@ -37,7 +39,7 @@ window.addEventListener("message", function (message) {
                 loadOmokBoard();
                 break;
             case 'end' : //게임 종료
-                document.querySelector('#moveViewer').disabled = false;
+                document.querySelector('#inviteUser').disabled = false;
                 document.querySelector('#leaveRoom').disabled = false;
                 publicRoom = [roomName,"","",[]];
                 GameEndScreen(receivedMessage.data);
@@ -50,9 +52,9 @@ window.addEventListener("message", function (message) {
                 broadMessage = [];
                 roomName = receivedMessage.data.name;
                 publicRoom = [receivedMessage.data.name,
-                    receivedMessage.data.blackPlayer == null ? "" : receivedMessage.data.blackPlayer,
-                    receivedMessage.data.whitePlayer == null ? "" : receivedMessage.data.whitePlayer,
-                    receivedMessage.data.takes == null ? [] : receivedMessage.data.takes
+                    receivedMessage.data.blackPlayer,
+                    receivedMessage.data.whitePlayer,
+                    receivedMessage.data.takes
                 ];
                 createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
                 break;
@@ -60,11 +62,21 @@ window.addEventListener("message", function (message) {
                 broadMessage.push(receivedMessage.data);
                 if(isFirst && receivedMessage.data.indexOf('[입장] => ') > -1){
                     isFirst = false;
-                    myId = receivedMessage.data.replace("[입장] => ","");
+                    myId = receivedMessage.data.replace("[입장] => ","").replace(/<\/?[^>]+(>|$)/g, "");
                 }
                 if(receivedMessage.data.indexOf('[쌍삼] => ') > -1){
                     myTurn = true;
                 }
+                joinMessage = broadMessage.map(messageLine).join("");
+                createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
+                document.querySelector('#messages').scrollTop = document.querySelector('#messages').scrollHeight;
+                break;
+            case 'sendMessage' :
+                if(receivedMessage.data.indexOf(myId) > -1){
+                    receivedMessage.data = receivedMessage.data.replace(myId, '본인');
+                }
+                broadMessage.push(receivedMessage.data);
+                joinMessage = broadMessage.map(messageLine).join("");
                 createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
                 document.querySelector('#messages').scrollTop = document.querySelector('#messages').scrollHeight;
                 break;
@@ -105,6 +117,14 @@ window.addEventListener("message", function (message) {
                 publicRoom[3] = receivedMessage.data;
                 loadOmokBoard();
                 break;
+            case 'availUsers' :
+                invitePopSetting(receivedMessage.data);
+                setVisible('.invitePopup');
+                break;
+            case 'invite' :
+                document.querySelector('.acceptPopup_text').innerText = receivedMessage.data;
+                setVisible('.acceptPopup');
+                break;
         }
     }
 });
@@ -116,7 +136,7 @@ function parentToMessage(message){
 
 //message 이벤트를 받아 쌓는 함수
 function messageLine(msg) {
-    return msg + "<br />";
+    return `${msg}<br />`;
 }
 
 //방 나가기 버튼 클릭 시 발생 함수
@@ -129,10 +149,15 @@ function leaveRoom(){
 
 //관전하기 버튼 클릭 시 발생 함수
 function moveViewer() {
+    parentToMessage({type: 'changeRole', data: 'viewer'});
+}
+
+//초대하기 버튼 클릭 시 발생 함수
+function inviteUser() {
     if(isStart){
         return;
     }
-    parentToMessage({type: 'changeRole', data: 'viewer'});
+    parentToMessage({type: 'availUsers'});
 }
 
 //항복하기 버튼 클릭 시 발생 함수
@@ -159,6 +184,7 @@ function handleNewRoom(event){
     if (name.length === 0) {
         window.parent.document.querySelector('.alertPopup_text').innerText = '방 이름을 입력해주세요.';
         window.parent.document.querySelector('.alertPopup').style.display = '';
+        window.parent.document.querySelector('#parent_overlay').style.display = 'block';
         return;
     }
     const joinRoomMessage = {type: 'createRoom', name: name};
@@ -233,17 +259,26 @@ function createGameParticipants(roomName, blackPlayer, whitePlayer) {
           </div>
         </div>
         <div class="gameParticipants_message">
-          <p id="messages">${broadMessage.map(messageLine).join("")}</p>
+          <p id="messages">${joinMessage}</p>
         </div>
-        <button class="gameStart_button" ${startBtnDisabled === true ? `disabled="true"` : ``} onclick="gameStart()">게임시작</button>
+        <div class="gameParticipants_sendForm">
+          <input type="text" id="messageInput" placeholder="메시지를 입력하세요.">
+          <button id="sendMessage" onclick="sendMessage()">전송</button>
+        </div>
+        <div class="gameParticipants_buttons">
+            <button class="gameStart_button" ${startBtnDisabled === true ? `disabled="true"` : ``} style="width: 80%" onclick="gameStart()">게임시작</button>
+            <button class="gameParticipants_button" id="moveViewer" style="width: 17%" onclick="moveViewer()">관전하기</button>
+        </div>
       </div>
-      <div class="gameParticipants_buttons">
-        <button class="gameParticipants_button" id="giveUp" onclick="giveUp()">항복</button>
-        <button class="gameParticipants_button" id="undoMove" onclick="undoMove()">무르기</button>
-      </div>
-      <div class="gameParticipants_buttons">
-        <button class="gameParticipants_button" id="moveViewer" onclick="moveViewer()">관전하기</button>
-        <button class="gameParticipants_button" id="leaveRoom" onclick="leaveRoom()">방 나가기</button>
+      <div style="width: 100%">
+          <div class="gameParticipants_buttons">
+            <button class="gameParticipants_button" id="giveUp" onclick="giveUp()">항복</button>
+            <button class="gameParticipants_button" id="undoMove" onclick="undoMove()">무르기</button>
+          </div>
+          <div class="gameParticipants_buttons">
+            <button class="gameParticipants_button" id="inviteUser" onclick="inviteUser()">초대하기</button>
+            <button class="gameParticipants_button" id="leaveRoom" onclick="leaveRoom()">방 나가기</button>
+          </div>
       </div>
     `;
 }
@@ -429,6 +464,30 @@ function onUndoMoveCancel(){
     setInvisible('.undoMovePopup');
 }
 
+//초대하기 함수
+function onInvite(){
+    setInvisible('.invitePopup');
+    parentToMessage({type: 'invite', data : document.querySelector('.invitePopup_user.clicked').innerText});
+}
+
+//초대하기 취소 함수
+function onInviteCancel(){
+    setInvisible('.invitePopup');
+}
+
+//초대 수락 함수
+function onAccept(){
+    setInvisible('.acceptPopup');
+    const joinRoomMessage = {type: 'joinRoom',
+        name: findRoomName(document.querySelector('.acceptPopup_text').innerText)};
+    parentToMessage(joinRoomMessage);
+}
+
+//초대 거절 함수
+function onReject(){
+    setInvisible('.acceptPopup');
+}
+
 //게임시작 팝업 띄우기
 function gameStart(){
     if(publicRoom[1] !== '' && publicRoom[2] !== '') {
@@ -439,10 +498,88 @@ function gameStart(){
     }
 }
 
+//팝업 닫기 및 뒷 배경을 덮는 모달 제거
 function setInvisible(div){
     document.querySelector(div).style.display = 'none';
+    if(div == '.acceptPopup'){
+        document.getElementById('waitingRoom_overlay').style.display = 'none';
+    } else {
+        document.getElementById('gamingRoom_overlay').style.display = 'none';
+    }
 }
 
+//팝업 띄우기 및 뒷 배경을 덮는 모달 표출
 function setVisible(div){
     document.querySelector(div).style.display = '';
+    if(div == '.acceptPopup'){
+        document.getElementById('waitingRoom_overlay').style.display = 'block';
+    } else {
+        document.getElementById('gamingRoom_overlay').style.display = 'block';
+    }
+}
+
+//유저 채팅 메세지 전송
+function sendMessage(){
+    const messageInput = document.querySelector('#messageInput');
+    if(messageInput.value == ''){
+        window.parent.document.querySelector('.alertPopup_text').innerText = "메시지를 입력해주세요.";
+        window.parent.document.querySelector('.alertPopup').style.display = '';
+        window.parent.document.querySelector('#parent_overlay').style.display = 'block';
+        return;
+    }
+    parentToMessage({type: 'sendMessage', message: messageInput.value});
+    messageInput.value = '';
+}
+
+//초대가능한 유저 팝업에 생성
+function invitePopSetting(data){
+    document.querySelector('.invitePopup_userList').innerHTML = '';
+    const dataSplit = data.split(',');
+    for(let i=0; i<dataSplit.length; i++) {
+        const temp = document.createElement('div');
+        temp.className = 'invitePopup_user';
+        temp.textContent = dataSplit[i];
+
+        temp.addEventListener('click', () => {
+            const allDivs = document.querySelectorAll('.invitePopup_user');
+            allDivs.forEach(div => div.classList.remove('clicked'));
+            temp.classList.add('clicked');
+        });
+        document.querySelector('.invitePopup_userList').appendChild(temp);
+    }
+}
+
+//문자열에서 ''(싱글쿼터) 안에 있는 문자 정규식으로 찾기
+function findRoomName(inputString) {
+    const regex = /'([^']*)'/g;
+    const matches = [];
+
+    let match;
+    while ((match = regex.exec(inputString)) !== null) {
+        matches.push(match[1]);
+    }
+
+    return matches.toString();
+}
+
+window.onload = function() {
+    // 이벤트 리스너 등록
+    document.getElementById('signInForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // 폼 제출 기본 동작 막기
+        onLogin(); // 로그인 함수 호출
+    });
+
+    document.getElementById('signUpForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // 폼 제출 기본 동작 막기
+        onSignUp(); // 회원가입 함수 호출
+    });
+}
+
+function onLogin(){
+    console.log('로그인 버튼이 클릭되었습니다.');
+    document.getElementById("signInForm").reset();
+}
+function onSignUp(){
+    console.log('회원가입 버튼이 클릭되었습니다.');
+    document.getElementById("signUpForm").reset();
 }

@@ -14,13 +14,22 @@ window.onload = function() {
         // 플레이어 간 통신 메시지 처리 로직...
         childFrame = document.getElementById('frameElement');
         switch (receivedMessage.type) {
+            case 'login' :
+                document.querySelector('#myId').innerText = '아이디 : ' + receivedMessage.data;
+                break;
             case 'error' :
                 childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             case 'start' :
                 childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
+            case 'end' :
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
+                break;
             case 'message' :
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
+                break;
+            case 'sendMessage' :
                 childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             case 'roomList' :
@@ -43,7 +52,7 @@ window.onload = function() {
             case 'move' :
                 childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
-            case 'end' :
+            case 'invite' :
                 childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             default :
@@ -75,4 +84,5 @@ window.onload = function() {
 
 function onAlertClick(){
     document.querySelector('.alertPopup').style.display = 'none';
+    window.parent.document.querySelector('#parent_overlay').style.display = 'none';
 }
