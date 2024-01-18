@@ -82,6 +82,7 @@ window.onload = function() {
     });
 };
 
+//알럿 닫기
 function onAlertClick(){
     document.querySelector('.alertPopup').style.display = 'none';
     window.parent.document.querySelector('#parent_overlay').style.display = 'none';
