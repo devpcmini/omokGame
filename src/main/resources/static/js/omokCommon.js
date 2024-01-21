@@ -15,7 +15,10 @@ window.onload = function() {
         childFrame = document.getElementById('frameElement');
         switch (receivedMessage.type) {
             case 'login' :
-                document.querySelector('#myId').innerText = '아이디 : ' + receivedMessage.data;
+                if(receivedMessage.data.indexOf('입력한 정보가 올바르지 않습니다.') == -1) {
+                    document.querySelector('#myId').innerText = '아이디 : ' + receivedMessage.data;
+                }
+                childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
             case 'error' :
                 childFrame.contentWindow.postMessage(receivedMessage, '*');

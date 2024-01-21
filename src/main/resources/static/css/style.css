@@ -115,6 +115,7 @@ body {
 }
 
 .roomList_name {
+    color: black;
     margin-left: 20px;
     font-size: 20px;
     font-weight: bold;
@@ -169,6 +170,7 @@ body {
     margin: 10px 0 20px 0;
     font-size: 30px;
     align-self: center;
+    color: black;
 }
 
 .gameParticipants_players {
@@ -219,6 +221,7 @@ body {
     height: 100%;
     font-weight: bold;
     text-align: center;
+    color: black;
 }
 
 .gameParticipants_join {
@@ -364,6 +367,7 @@ body {
 
 .endPopup_text {
     margin: 20px 0;
+    color: black;
 }
 
 .endPopup_button {
@@ -406,6 +410,7 @@ body {
 
 .startPopup_text {
     margin: 20px 0;
+    color: black;
 }
 
 .startPopup_button {
@@ -448,6 +453,7 @@ body {
 
 .exitPopup_text {
     margin: 20px 0;
+    color: black;
 }
 
 .exitPopup_button {
@@ -490,6 +496,7 @@ body {
 
 .alertPopup_text {
     margin: 20px 0;
+    color: black;
 }
 
 .alertPopup_button {
@@ -532,6 +539,7 @@ body {
 
 .giveUpPopup_text {
     margin: 20px 0;
+    color: black;
 }
 
 .giveUpPopup_button {
@@ -574,6 +582,7 @@ body {
 
 .undoMovePopup_text {
     margin: 20px 0;
+    color: black;
 }
 
 .undoMovePopup_button {
@@ -675,6 +684,7 @@ body {
 
 .invitePopup_text {
     margin-top: 20px;
+    color: black;
 }
 
 .invitePopup_userList {
@@ -894,7 +904,7 @@ html::-webkit-scrollbar-thumb:hover {
 }
 .loginForm .group .input,
 .loginForm .group .button{
-    border:none;
+    border:1px solid #a3add9;
     padding:15px 20px;
     border-radius:25px;
     background:rgba(255,255,255,.1);
@@ -909,7 +919,7 @@ html::-webkit-scrollbar-thumb:hover {
 }
 .loginForm .group .button{
     color: white;
-    background:#1161ee;
+    background: #f3c271;
 }
 .loginForm .group label .icon{
     width:15px;

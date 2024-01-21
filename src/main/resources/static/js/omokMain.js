@@ -21,14 +21,34 @@ window.addEventListener("message", function (message) {
         const blackDiv = document.querySelector('.gameParticipants_blackColor');
         const whiteDiv = document.querySelector('.gameParticipants_whiteColor');
         switch (receivedMessage.type) {
+            case 'login' :
+                if(receivedMessage.data.indexOf('입력한 정보가 올바르지 않습니다.') > -1){
+                    alertPopup(receivedMessage.data);
+                } else {
+                    rememberId();
+                    document.getElementById("signInForm").reset();
+                    document.getElementById("signUpForm").reset();
+                    document.querySelector('#login').style.display = 'none';
+                    document.querySelector('#waitingRoom').style.display = '';
+                }
+                break;
+            case 'signUp' :
+                alertPopup(receivedMessage.data);
+                if(receivedMessage.data.indexOf('회원가입되었습니다') > -1){
+                    const radioTab = document.getElementsByName('tab');
+                    // 로그인 폼으로 이동
+                    radioTab[0].checked = true;
+                } else {
+                    document.getElementById("signUpForm").reset();
+                }
+                break;
             case 'error' :
-                window.parent.document.querySelector('.alertPopup_text').innerText = receivedMessage.data;
-                window.parent.document.querySelector('.alertPopup').style.display = '';
-                window.parent.document.querySelector('#parent_overlay').style.display = 'block';
+                alertPopup(receivedMessage.data);
                 break;
             case 'start' :
                 isStart = true;
                 document.querySelector('.gameStart_button').disabled = true;
+                document.querySelector('#moveViewer').disabled = true;
                 document.querySelector('#inviteUser').disabled = true;
                 document.querySelector('#leaveRoom').disabled = true;
                 if(myId == document.querySelectorAll('.gameParticipants_playername')[1].innerText) {
@@ -39,6 +59,7 @@ window.addEventListener("message", function (message) {
                 loadOmokBoard();
                 break;
             case 'end' : //게임 종료
+                document.querySelector('#moveViewer').disabled = false;
                 document.querySelector('#inviteUser').disabled = false;
                 document.querySelector('#leaveRoom').disabled = false;
                 publicRoom = [roomName,"","",[]];
@@ -182,9 +203,7 @@ function handleNewRoom(event){
     const name = event.target.roomName.value;
     event.target.roomName.value = "";
     if (name.length === 0) {
-        window.parent.document.querySelector('.alertPopup_text').innerText = '방 이름을 입력해주세요.';
-        window.parent.document.querySelector('.alertPopup').style.display = '';
-        window.parent.document.querySelector('#parent_overlay').style.display = 'block';
+        alertPopup("방 이름을 입력해주세요.");
         return;
     }
     const joinRoomMessage = {type: 'createRoom', name: name};
@@ -262,7 +281,7 @@ function createGameParticipants(roomName, blackPlayer, whitePlayer) {
           <p id="messages">${joinMessage}</p>
         </div>
         <div class="gameParticipants_sendForm">
-          <input type="text" id="messageInput" placeholder="메시지를 입력하세요.">
+          <input type="text" id="messageInput" placeholder="메시지를 입력하세요." onkeyup="messageInputKeyup(event)">
           <button id="sendMessage" onclick="sendMessage()">전송</button>
         </div>
         <div class="gameParticipants_buttons">
@@ -522,9 +541,7 @@ function setVisible(div){
 function sendMessage(){
     const messageInput = document.querySelector('#messageInput');
     if(messageInput.value == ''){
-        window.parent.document.querySelector('.alertPopup_text').innerText = "메시지를 입력해주세요.";
-        window.parent.document.querySelector('.alertPopup').style.display = '';
-        window.parent.document.querySelector('#parent_overlay').style.display = 'block';
+        alertPopup("메시지를 입력해주세요.");
         return;
     }
     parentToMessage({type: 'sendMessage', message: messageInput.value});
@@ -563,23 +580,129 @@ function findRoomName(inputString) {
 }
 
 window.onload = function() {
+    const rememberId = getCookie('saveid');
+    if(rememberId != ""){
+        document.querySelector('#signInCheck').checked = true;
+        document.querySelector('#signInUser').value = rememberId;
+    }
     // 이벤트 리스너 등록
-    document.getElementById('signInForm').addEventListener('submit', function(event) {
+    document.getElementById('signInForm').addEventListener('submit', (event)=>{
         event.preventDefault(); // 폼 제출 기본 동작 막기
         onLogin(); // 로그인 함수 호출
     });
 
-    document.getElementById('signUpForm').addEventListener('submit', function(event) {
+    document.getElementById('signUpForm').addEventListener('submit', (event)=>{
         event.preventDefault(); // 폼 제출 기본 동작 막기
         onSignUp(); // 회원가입 함수 호출
     });
+
+    document.querySelector('.newRoom_input').addEventListener("keyup",(event)=>{
+       console.log(event);
+    });
+}
+
+function messageInputKeyup(event){
+   console.log(event);
 }
 
 function onLogin(){
-    console.log('로그인 버튼이 클릭되었습니다.');
-    document.getElementById("signInForm").reset();
+    const signInUser = document.querySelector('#signInUser').value;
+    const signInPass = document.querySelector('#signInPass').value;
+    if(signInUser == ''){
+        alertPopup("아이디를 입력해주세요.");
+        return;
+    }
+    if(signInPass == ''){
+        alertPopup("비밀번호를 입력해주세요.");
+        return;
+    }
+    const joinRoomMessage = {type: 'login',
+        userId: signInUser,
+        password : signInPass
+    };
+    parentToMessage(joinRoomMessage);
 }
 function onSignUp(){
     console.log('회원가입 버튼이 클릭되었습니다.');
-    document.getElementById("signUpForm").reset();
+    const signUpUserId = document.querySelector('#signUpUser').value;
+    const signUpPass = document.querySelector('#signUpPass').value;
+    const signUpRepeatPass = document.querySelector('#signUpRepeatPass').value;
+    const signUpEmail = document.querySelector('#signUpEmail').value;
+    if(signUpUserId == ''){
+        alertPopup("아이디를 입력해주세요.");
+        return;
+    }
+    if(signUpPass == ''){
+        alertPopup("비밀번호를 입력해주세요.");
+        return;
+    }
+    if(signUpRepeatPass == ''){
+        alertPopup("비밀번호 확인을 입력해주세요.");
+        return;
+    }
+    if(signUpEmail == ''){
+        alertPopup("이메일 주소를 입력해주세요.");
+        return;
+    }
+    if(document.querySelector('#signUpPass').value != document.querySelector('#signUpRepeatPass').value){
+        alertPopup("입력하신 비밀번호가 다릅니다.");
+        return;
+    }
+    const joinRoomMessage = {type: 'signUp',
+        userId: signUpUserId,
+        password : signUpPass,
+        email : signUpEmail,
+    };
+    parentToMessage(joinRoomMessage);
 }
+
+function alertPopup(message){
+    window.parent.document.querySelector('.alertPopup_text').innerText = message;
+    window.parent.document.querySelector('.alertPopup').style.display = '';
+    window.parent.document.querySelector('#parent_overlay').style.display = 'block';
+}
+
+function setCookie(name, id, expiryDays) {
+    const todayDate = new Date();
+    todayDate.setTime(todayDate.getTime() + 0);
+    if(todayDate > expiryDays){
+        document.cookie = name + "=" + escape(id) + "; path=/; expires=" + expiryDays + ";";
+    }else if(todayDate < expiryDays){
+        todayDate.setDate(todayDate.getDate() + expiryDays);
+        document.cookie = name + "=" + escape(id) + "; path=/; expires=" + todayDate.toGMTString() + ";";
+    }
+    console.log(document.cookie);
+}
+
+function getCookie(Name) {
+    const search = Name + "=";
+
+    if (document.cookie.length > 0) { // 쿠키가 설정되어 있다면
+        let offset = document.cookie.indexOf(search);
+        if (offset != -1) { // 쿠키가 존재하면
+            offset += search.length;
+            let end = document.cookie.indexOf(";", offset);
+            console.log("end : " + end);
+            // 쿠키 값의 마지막 위치 인덱스 번호 설정
+            if (end == -1) {
+                end = document.cookie.length;
+            }
+            console.log("end위치  : " + end);
+
+            return unescape(document.cookie.substring(offset, end));
+        }
+    }
+    return "";
+}
+
+function rememberId(){
+    const time = new Date();
+    if (document.querySelector('#signInCheck').checked){
+        time.setTime(time.getTime() + 1000 * 3600 * 24 * 30);
+        setCookie("saveid",document.querySelector('#signInUser').value, time);
+    }else{
+        time.setTime(time.getTime() - 1000 * 3600 * 24 * 30);
+        setCookie("saveid", document.querySelector('#signInUser').value, time);
+    }
+}
+
