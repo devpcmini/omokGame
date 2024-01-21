@@ -1,9 +1,8 @@
 package dev.pcm.omokgame.webSocket;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import dev.pcm.omokgame.service.UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.socket.config.annotation.*;
 import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 
@@ -11,9 +10,20 @@ import org.springframework.web.socket.server.standard.ServletServerContainerFact
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
+    private final UserService userService;
+
+    public WebSocketConfig(UserService userService) {
+        this.userService = userService;
+    }
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(new WebSocketHandler(), "/ws").setAllowedOrigins("*"); // WebSocket 엔드포인트 등록
+        registry.addHandler(webSocketHandler(), "/ws").setAllowedOrigins("*"); // WebSocket 엔드포인트 등록
+    }
+
+    @Bean
+    public WebSocketHandler webSocketHandler() {
+        return new WebSocketHandler(userService);
     }
 
     @Bean
