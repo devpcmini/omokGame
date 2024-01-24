@@ -4,8 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.pcm.omokgame.entity.UserEntity;
+import dev.pcm.omokgame.fcm.FCMService;
 import dev.pcm.omokgame.service.UserService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -19,14 +21,20 @@ import java.util.stream.Collectors;
 public class WebSocketHandler extends TextWebSocketHandler {
 
     private final UserService userService;
+    private final FCMService fCMService;
 
-    public WebSocketHandler(UserService userService) {
+    public WebSocketHandler(UserService userService,
+                            FCMService fCMService) {
         this.userService = userService;
+        this.fCMService = fCMService;
     }
 
     private static Set<WebSocketSession> sessions = new HashSet<>();
     private static Set<PublicRoom> publicRoom = new HashSet<>();
     private static ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${pcm.fcm.accountKeyPath}")
+    private String accountKeyPath;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws IOException {
@@ -79,6 +87,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
         switch (type) {
             case "login" :
+                String token = jsonNode.get("token").asText();
                 userId = jsonNode.get("userId").asText();
                 password = jsonNode.get("password").asText();
                 user.setUserId(userId);
@@ -90,13 +99,16 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 );
                 if(loginResult != null) {
                     session.getAttributes().put("userId",userId);
+                    session.getAttributes().put("token",token);
                     user.setSessionid(session.getId());
                     userService.updateUser(user);
                     jsonPayload = objectMapper.writeValueAsString(
                             Map.of("type", "login", "data", userId)
                     );
+                    fCMService.sendPush(token);
                 }
                 session.sendMessage(new TextMessage(jsonPayload));
+                sendRoomList();
                 break;
             case "signUp" :
                 email = jsonNode.get("email").asText();
@@ -615,6 +627,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         String jsonPayload = objectMapper.writeValueAsString(
                 Map.of("type", "roomList", "data", publicRoom)
         );
+        Map<String,String> data = new HashMap<>();
         for (WebSocketSession sess : sessions) {
             if(sess.isOpen()) {
                 sess.sendMessage(new TextMessage(jsonPayload));

@@ -1,5 +1,6 @@
 package dev.pcm.omokgame.webSocket;
 
+import dev.pcm.omokgame.fcm.FCMService;
 import dev.pcm.omokgame.service.UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,9 +12,12 @@ import org.springframework.web.socket.server.standard.ServletServerContainerFact
 public class WebSocketConfig implements WebSocketConfigurer {
 
     private final UserService userService;
+    private final FCMService fCMService;
 
-    public WebSocketConfig(UserService userService) {
+    public WebSocketConfig(UserService userService,
+                           FCMService fCMService) {
         this.userService = userService;
+        this.fCMService = fCMService;
     }
 
     @Override
@@ -23,7 +27,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Bean
     public WebSocketHandler webSocketHandler() {
-        return new WebSocketHandler(userService);
+        return new WebSocketHandler(userService, fCMService);
     }
 
     @Bean
