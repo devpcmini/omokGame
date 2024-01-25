@@ -1,8 +1,35 @@
 window.onload = function() {
-    let childFrame;
+    let childFrame = document.getElementById('frameElement');
+    // Initialize Firebase
+    firebase.initializeApp({
+        apiKey: "AIzaSyCScK2DGrTe-lSdi7euF81ilaLygrEMcYo",
+        authDomain: "omokgame-8c565.firebaseapp.com",
+        projectId: "omokgame-8c565",
+        storageBucket: "omokgame-8c565.appspot.com",
+        messagingSenderId: "626400468296",
+        appId: "1:626400468296:web:f146d30869018aa54de77d",
+        measurementId: "G-M46FN291B5"
+    });
+
+    const messaging = firebase.messaging();
+    const publicVapidKey = 'BDpyANOK-A_F167S6epNvW9p6Z-l_bUoZem0gyW8jgnHaRpTyqbk4UjOP7PzLdX6qdLHMoUynaj_4_3exq8PNuE';
+    messaging.usePublicVapidKey(publicVapidKey);
+    messaging.getToken().then(function(currentToken) {
+        console.log('currentToken: ' + currentToken);
+        if (currentToken) {
+            childFrame.contentWindow.document.querySelector('#token').value = currentToken;
+            console.log ('Token get - ' + currentToken);
+        } else {
+            console.log('No Instance ID token available. Request permission to generate one.');
+        }
+    }).catch(function(err) {
+        console.log('Error retrieving Instance ID token. ', err);
+    })
+
     const socket = new WebSocket('ws://' + ip + ':8080/ws');
     socket.onopen = function (event) {
-        sendMessageToServer({type: 'roomList'});
+        console.log("open socket")
+        socket.send(JSON.stringify({type: 'connect',token : childFrame.contentWindow.document.querySelector('#token').value}));
     };
 
     socket.onmessage = function (event) {
@@ -12,7 +39,6 @@ window.onload = function() {
             receivedMessage = JSON.parse(event.data);
         }
         // 플레이어 간 통신 메시지 처리 로직...
-        childFrame = document.getElementById('frameElement');
         switch (receivedMessage.type) {
             case 'login' :
                 if(receivedMessage.data.indexOf('입력한 정보가 올바르지 않습니다.') == -1) {

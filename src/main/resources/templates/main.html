@@ -22,11 +22,14 @@
     </style>
     <script>
         const ip = `[[${ip}]]`;
+        let token = '';
     </script>
 </head>
 <body>
     <link href="/css/style.css" rel="stylesheet" type="text/css" id="custom-stylesheet"/>
     <script src="/js/omokCommon.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
     <h1 style="margin-top: 50px; color: black;">Omok Game</h1>
     <h4 id="myId" style="color: black;"></h4>
     <div id="parent_overlay" class="overlay"></div>

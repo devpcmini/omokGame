@@ -698,6 +698,7 @@ body {
 .invitePopup_user {
     background-color: white;
     cursor: pointer;
+    color: #f3c271;
 }
 
 .invitePopup_user.clicked {
@@ -732,7 +733,7 @@ body {
 
 .acceptPopup_main {
     width: 40%;
-    height: 20%;
+    height: 16%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -744,6 +745,7 @@ body {
 .acceptPopup_text {
     margin: 20px 20px;
     text-align: center;
+    color: black;
 }
 
 .acceptPopup_userList {

@@ -618,7 +618,8 @@ function onLogin(){
     }
     const joinRoomMessage = {type: 'login',
         userId: signInUser,
-        password : signInPass
+        password : signInPass,
+        token : document.querySelector('#token').value
     };
     parentToMessage(joinRoomMessage);
 }
@@ -671,7 +672,6 @@ function setCookie(name, id, expiryDays) {
         todayDate.setDate(todayDate.getDate() + expiryDays);
         document.cookie = name + "=" + escape(id) + "; path=/; expires=" + todayDate.toGMTString() + ";";
     }
-    console.log(document.cookie);
 }
 
 function getCookie(Name) {
@@ -700,9 +700,12 @@ function rememberId(){
     if (document.querySelector('#signInCheck').checked){
         time.setTime(time.getTime() + 1000 * 3600 * 24 * 30);
         setCookie("saveid",document.querySelector('#signInUser').value, time);
-    }else{
+    } else {
         time.setTime(time.getTime() - 1000 * 3600 * 24 * 30);
         setCookie("saveid", document.querySelector('#signInUser').value, time);
     }
 }
 
+function resetPwd(){
+
+}
