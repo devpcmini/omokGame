@@ -15,6 +15,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -86,8 +87,11 @@ public class WebSocketHandler extends TextWebSocketHandler {
             password = jsonNode.get("password").asText();
         }
         switch (type) {
-            case "login" :
+            case "connect" :
                 String token = jsonNode.get("token").asText();
+                session.getAttributes().put("fcmToken",token);
+                break;
+            case "login" :
                 userId = jsonNode.get("userId").asText();
                 password = jsonNode.get("password").asText();
                 user.setUserId(userId);
@@ -99,13 +103,12 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 );
                 if(loginResult != null) {
                     session.getAttributes().put("userId",userId);
-                    session.getAttributes().put("token",token);
                     user.setSessionid(session.getId());
                     userService.updateUser(user);
                     jsonPayload = objectMapper.writeValueAsString(
                             Map.of("type", "login", "data", userId)
                     );
-                    fCMService.sendPush(token);
+                    fcmSendMessage(String.valueOf(session.getAttributes().get("fcmToken")),"로그인");
                 }
                 session.sendMessage(new TextMessage(jsonPayload));
                 sendRoomList();
@@ -125,6 +128,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     jsonPayload = objectMapper.writeValueAsString(
                             Map.of("type", "signUp", "data", "회원가입되었습니다. 가입하신 아이디로 로그인해주세요.")
                     );
+                    fcmSendMessage(String.valueOf(session.getAttributes().get("fcmToken")),"회원가입을 축하합니다.");
                 }
                 session.sendMessage(new TextMessage(jsonPayload));
                 break;
@@ -634,6 +638,17 @@ public class WebSocketHandler extends TextWebSocketHandler {
             }
         }
     }
+
+    private void fcmSendMessage(String token, String message){
+        try {
+            fCMService.sendNotification(token,message);
+        } catch (ExecutionException e) {
+            log.error("sendMessage ExecutionException ==> {}", e.toString());
+        } catch (InterruptedException e) {
+            log.error("sendMessage InterruptedException ==> {}", e.toString());
+        }
+    }
+
 
     /*************************************************************33***************************************************/
     //열린 3이 2개이상이면 쌍삼으로 간주하여 true리턴
