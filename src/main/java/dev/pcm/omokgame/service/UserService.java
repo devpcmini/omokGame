@@ -18,26 +18,46 @@ public class UserService {
     }
 
     public UserEntity saveUser(UserEntity user) {
-        // 가입한 사용자가 있는지 체크
-        Optional<UserEntity> result = userRepository.findByUserId(user.getUserId());
-        if (result.isPresent()) {
+        try {
+            // 가입한 사용자가 있는지 체크
+            Optional<UserEntity> result = userRepository.findByUserId(user.getUserId());
+            if (result.isPresent()) {
+                return null;
+            }
+            // 사용자가 없다면 저장
+            return userRepository.save(user);
+        } catch (Exception e){
+            e.printStackTrace();
             return null;
         }
-        // 사용자가 없다면 저장
-        return userRepository.save(user);
     }
 
-    public UserEntity updateUser(UserEntity user) {
-        // userId와 password가 있는지 체크
-        Optional<UserEntity> result = userRepository.findByUserId(user.getUserId());
-        result.get().setSessionid(user.getSessionid());
-        // userId와 password가 있다면 업데이트
-        return userRepository.save(result.get());
+    public UserEntity updateUser(UserEntity user, boolean isChk) {
+        try {
+            if(isChk) {
+                // userId와 password가 있는지 체크
+                Optional<UserEntity> result = userRepository.findByUserId(user.getUserId());
+                result.get().setSessionid(user.getSessionid());
+                // userId와 password가 있다면 업데이트
+                return userRepository.save(result.get());
+            } else {
+                return userRepository.save(user);
+            }
+        } catch (Exception e){
+            e.printStackTrace();
+            return null;
+        }
     }
 
     // userId와 password로 일치하는 사용자 찾기
     public UserEntity findByUserIdAndPassword(UserEntity user) {
         Optional<UserEntity> result = userRepository.findByUserIdAndPassword(user.getUserId(), user.getPassword());
+        return result.orElse(null);
+    }
+
+    // userId와 email로 일치하는 사용자 찾기
+    public UserEntity findByUserIdAndEmail(UserEntity user) {
+        Optional<UserEntity> result = userRepository.findByUserIdAndEmail(user.getUserId(), user.getEmail());
         return result.orElse(null);
     }
 }

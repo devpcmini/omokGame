@@ -64,7 +64,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
             String userId = String.valueOf(session.getAttributes().get("userId"));
             user.setUserId(userId);
             user.setSessionid(null);
-            UserEntity loginResult = userService.updateUser(user);
+            userService.updateUser(user,true);
         }
         sessions.remove(session);
     }
@@ -87,6 +87,44 @@ public class WebSocketHandler extends TextWebSocketHandler {
             password = jsonNode.get("password").asText();
         }
         switch (type) {
+            case "idChk" :
+                userId = jsonNode.get("userId").asText();
+                email = jsonNode.get("email").asText();
+                user.setUserId(userId);
+                user.setEmail(email);
+                UserEntity idChk = userService.findByUserIdAndEmail(user);
+                jsonPayload = objectMapper.writeValueAsString(
+                        Map.of("type", "idChk","data", "입력한 정보에 해당하는 사용자가 없습니다.")
+                );
+                if(idChk != null) {
+                    jsonPayload = objectMapper.writeValueAsString(
+                            Map.of("type", "idChk", "data", "Success")
+                    );
+                }
+                session.sendMessage(new TextMessage(jsonPayload));
+                break;
+            case "savePwd" :
+                userId = jsonNode.get("userId").asText();
+                email = jsonNode.get("email").asText();
+                password = jsonNode.get("password").asText();
+                user.setUserId(userId);
+                user.setEmail(email);
+                user.setPassword(password);
+
+                UserEntity result = userService.findByUserIdAndEmail(user);
+                jsonPayload = objectMapper.writeValueAsString(
+                        Map.of("type", "savePwd","data", "입력한 정보에 해당하는 사용자가 없습니다.")
+                );
+                if(result != null) {
+                    user.setId(result.getId());
+                    userService.updateUser(user,false);
+                    jsonPayload = objectMapper.writeValueAsString(
+                            Map.of("type", "savePwd", "data", "비밀번호가 변경되었습니다.")
+                    );
+                    fcmSendMessage(String.valueOf(session.getAttributes().get("fcmToken")),"비밀번호가 변경되었습니다.");
+                }
+                session.sendMessage(new TextMessage(jsonPayload));
+                break;
             case "connect" :
                 String token = jsonNode.get("token").asText();
                 session.getAttributes().put("fcmToken",token);
@@ -104,7 +142,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 if(loginResult != null) {
                     session.getAttributes().put("userId",userId);
                     user.setSessionid(session.getId());
-                    userService.updateUser(user);
+                    user.setEmail(loginResult.getEmail());
+                    user.setId(loginResult.getId());
+                    userService.updateUser(user,false);
                     jsonPayload = objectMapper.writeValueAsString(
                             Map.of("type", "login", "data", userId)
                     );
@@ -750,7 +790,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
 
         allStone = stone1 + stone2;
-        log.info("← → => {}",allStone);
         //삼삼이므로 돌갯수가 2 + 1(현재돌)이아니면 0리턴
         //이부분이 43을 허용하게해줌. 33만 찾게됨
         if(allStone != 2) {
@@ -762,11 +801,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
         int right = (stone2 + blink2);
 
         //벽으로 막힌경우 - 열린3이 아님
-        if(coord.get("x").asInt() - left == 0 || coord.get("x").asInt() + right == 15) {
+        if((coord.get("x").asInt() - left) == 0 || (coord.get("x").asInt() + right) == 15) {
             return 0;
         }else {//상대돌로 막힌경우 - 열린3이 아님
-            if (takes.stream().anyMatch(t -> t.getX() == (coord.get("x").asInt() - left - 1) && takes.indexOf(t) % 2 == 1)
-                    || takes.stream().anyMatch(t -> t.getX() == (coord.get("x").asInt() + right + 1) && takes.indexOf(t) % 2 == 1)) {
+            if (takes.stream().anyMatch(t ->  t.getY() == coord.get("y").asInt() &&
+                        t.getX() == (coord.get("x").asInt() - left - 1) && takes.indexOf(t) % 2 == 1) ||
+                    takes.stream().anyMatch(t -> t.getY() == coord.get("y").asInt() &&
+                        t.getX() == (coord.get("x").asInt() + right + 1) && takes.indexOf(t) % 2 == 1)) {
                 return 0;
             } else {
                 return 1; //열린3 일때 1 리턴
@@ -847,7 +888,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
 
         allStone = stone1 + stone2;
-        log.info("↖ ↘ => {}",allStone);
         if(allStone != 2) {
             return 0;
         }
@@ -855,11 +895,10 @@ public class WebSocketHandler extends TextWebSocketHandler {
         int leftUp = (stone1 + blink1);
         int rightDown = (stone2 + blink2);
 
-        if(coord.get("y").asInt() - leftUp == 0 || coord.get("x").asInt() - leftUp == 0
-                || coord.get("y").asInt() + rightDown == 15 || coord.get("x").asInt() + rightDown == 15) {
+        if((coord.get("y").asInt() - leftUp) == 0 || (coord.get("x").asInt() - leftUp) == 0
+                || (coord.get("y").asInt() + rightDown) == 15 || (coord.get("x").asInt() + rightDown) == 15) {
             return 0;
-        }else
-        if(takes.stream().anyMatch(take -> take.getY() == (coord.get("y").asInt() - leftUp -1)
+        }else if(takes.stream().anyMatch(take -> take.getY() == (coord.get("y").asInt() - leftUp -1)
                 && take.getX() == (coord.get("x").asInt() - leftUp - 1) && takes.indexOf(take) % 2 == 1)
                 || takes.stream().anyMatch(take -> take.getY() == (coord.get("y").asInt() + rightDown + 1)
                 && take.getX() == (coord.get("x").asInt() + rightDown + 1) && takes.indexOf(take) % 2 == 1)){
@@ -940,7 +979,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
 
         allStone = stone1 + stone2;
-        log.info("↑ ↓ => {}",allStone);
         if(allStone != 2) {
             return 0;
         }
@@ -948,7 +986,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         int up = (stone1 + blink1);
         int down = (stone2 + blink2);
 
-        if(coord.get("y").asInt() - up == 0 || coord.get("y").asInt() + down == 15) {
+        if((coord.get("y").asInt() - up) == 0 || (coord.get("y").asInt() + down) == 15) {
             return 0;
         } else {
             if(takes.stream().anyMatch(take -> take.getY() == (coord.get("y").asInt() - up - 1)
@@ -1037,7 +1075,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
 
         allStone = stone1 + stone2;
-        log.info("↙ ↗ => {}",allStone);
         if (allStone != 2) {
             return 0;
         }
