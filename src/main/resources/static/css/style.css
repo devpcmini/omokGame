@@ -384,6 +384,49 @@ body {
     transform: scale(1.1);
 }
 
+.resetPwdPopup {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9998;
+}
+
+.resetPwdPopup_main {
+    width: 30%;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: white;
+    border: 7px solid #866a45;
+    border-radius: 20px;
+}
+
+.resetPwdPopup_text {
+    margin: 20px 0;
+    color: black;
+}
+
+.resetPwdPopup_button {
+    width: 70px;
+    margin-bottom: 10px;
+    padding: 5px;
+    cursor: pointer;
+    background-color: #f3c271;
+    border-radius: 33px;
+    transition: transform 0.3s ease-in-out;
+}
+
+.resetPwdPopup_button:hover {
+    transform: scale(1.1);
+}
+
 .startPopup {
     position: absolute;
     top: 0;
@@ -497,6 +540,7 @@ body {
 .alertPopup_text {
     margin: 20px 0;
     color: black;
+    text-align: center;
 }
 
 .alertPopup_button {
@@ -912,7 +956,6 @@ html::-webkit-scrollbar-thumb:hover {
     background:rgba(255,255,255,.1);
 }
 .loginForm .group input[data-type="password"]{
-    text-security:circle;
     -webkit-text-security:circle;
 }
 .loginForm .group .label{
@@ -968,6 +1011,30 @@ html::-webkit-scrollbar-thumb:hover {
 }
 .loginHtml .sign-up:checked + .tab + .loginForm .signUp{
     transform:rotate(0);
+}
+
+.resetPwdPopup_main .group label {
+    color: black;
+}
+
+.resetPwdPopup_main .group input[data-type="password"]{
+    -webkit-text-security:circle;
+}
+.resetPwdPopup_main .group {
+    width: 350px;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+#resetPwd_id,
+#resetPwd_email,
+#resetPwd_newPwd,
+#resetPwd_newPwdChk {
+    border:1px solid #a3add9;
+    padding:7px 20px;
+    border-radius:25px;
+    background:rgba(255,255,255,.1);
 }
 
 .hr{
