@@ -59,6 +59,7 @@ window.addEventListener("message", function (message) {
                 loadOmokBoard();
                 break;
             case 'end' : //게임 종료
+                isStart = false;
                 document.querySelector('#moveViewer').disabled = false;
                 document.querySelector('#inviteUser').disabled = false;
                 document.querySelector('#leaveRoom').disabled = false;
@@ -286,17 +287,17 @@ function createGameParticipants(roomName, blackPlayer, whitePlayer) {
         </div>
         <div class="gameParticipants_buttons">
             <button class="gameStart_button" ${startBtnDisabled === true ? `disabled="true"` : ``} style="width: 80%" onclick="gameStart()">게임시작</button>
-            <button class="gameParticipants_button" id="moveViewer" style="width: 17%" onclick="moveViewer()">관전하기</button>
+            <button class="gameParticipants_button" ${startBtnDisabled === true ? `disabled="true"` : ``} id="moveViewer" style="width: 17%" onclick="moveViewer()">관전하기</button>
         </div>
       </div>
       <div style="width: 100%">
           <div class="gameParticipants_buttons">
-            <button class="gameParticipants_button" id="giveUp" onclick="giveUp()">항복</button>
-            <button class="gameParticipants_button" id="undoMove" onclick="undoMove()">무르기</button>
+            <button class="gameParticipants_button" ${startBtnDisabled === true && !myTurn ? `disabled="true"` : ``} id="giveUp" onclick="giveUp()">항복</button>
+            <button class="gameParticipants_button" ${startBtnDisabled === true && !myTurn ? `disabled="true"` : ``} id="undoMove" onclick="undoMove()">무르기</button>
           </div>
           <div class="gameParticipants_buttons">
-            <button class="gameParticipants_button" id="inviteUser" onclick="inviteUser()">초대하기</button>
-            <button class="gameParticipants_button" id="leaveRoom" onclick="leaveRoom()">방 나가기</button>
+            <button class="gameParticipants_button" ${isStart === true ? `disabled="true"` : ``} id="inviteUser" onclick="inviteUser()">초대하기</button>
+            <button class="gameParticipants_button" ${isStart === true ? `disabled="true"` : ``} id="leaveRoom" onclick="leaveRoom()">방 나가기</button>
           </div>
       </div>
     `;
@@ -435,7 +436,6 @@ function GameEndScreen(winner){
 
 //게임 승자 팝업 닫기 함수
 function onGameEnd(){
-    isStart = false;
     setInvisible('.endPopup');
 }
 
@@ -522,6 +522,8 @@ function setInvisible(div){
     document.querySelector(div).style.display = 'none';
     if(div == '.acceptPopup'){
         document.getElementById('waitingRoom_overlay').style.display = 'none';
+    } else if(div == '.resetPwdPopup'){
+        document.getElementById('login_overlay').style.display = 'none';
     } else {
         document.getElementById('gamingRoom_overlay').style.display = 'none';
     }
@@ -532,6 +534,8 @@ function setVisible(div){
     document.querySelector(div).style.display = '';
     if(div == '.acceptPopup'){
         document.getElementById('waitingRoom_overlay').style.display = 'block';
+    } else if(div == '.resetPwdPopup'){
+        document.getElementById('login_overlay').style.display = 'block';
     } else {
         document.getElementById('gamingRoom_overlay').style.display = 'block';
     }
@@ -588,12 +592,14 @@ window.onload = function() {
     // 이벤트 리스너 등록
     document.getElementById('signInForm').addEventListener('submit', (event)=>{
         event.preventDefault(); // 폼 제출 기본 동작 막기
-        onLogin(); // 로그인 함수 호출
     });
 
     document.getElementById('signUpForm').addEventListener('submit', (event)=>{
         event.preventDefault(); // 폼 제출 기본 동작 막기
-        onSignUp(); // 회원가입 함수 호출
+    });
+
+    window.parent.document.getElementById('resetPwdForm').addEventListener('submit', (event)=>{
+        event.preventDefault(); // 폼 제출 기본 동작 막기
     });
 
     document.querySelector('.newRoom_input').addEventListener("keyup",(event)=>{
@@ -658,7 +664,7 @@ function onSignUp(){
 }
 
 function alertPopup(message){
-    window.parent.document.querySelector('.alertPopup_text').innerText = message;
+    window.parent.document.querySelector('.alertPopup_text').innerHTML = message;
     window.parent.document.querySelector('.alertPopup').style.display = '';
     window.parent.document.querySelector('#parent_overlay').style.display = 'block';
 }
@@ -707,5 +713,13 @@ function rememberId(){
 }
 
 function resetPwd(){
-
+    window.parent.document.getElementById("resetPwdForm").reset();
+    window.parent.document.querySelector('#resetPwd').style.display = '';
+    window.parent.document.querySelector('#savePwd').style.display = 'none';
+    window.parent.document.querySelector('#idGroup').style.display = '';
+    window.parent.document.querySelector('#emailGroup').style.display = '';
+    window.parent.document.querySelector('#pwdGroup').style.display = 'none';
+    window.parent.document.querySelector('#pwdChkGroup').style.display = 'none';
+    window.parent.document.querySelector('.resetPwdPopup').style.display = '';
+    window.parent.document.querySelector('#parent_overlay').style.display = 'block';
 }
