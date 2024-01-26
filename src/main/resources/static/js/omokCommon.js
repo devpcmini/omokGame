@@ -1,3 +1,5 @@
+let socket;
+
 window.onload = function() {
     let childFrame = document.getElementById('frameElement');
     // Initialize Firebase
@@ -26,7 +28,7 @@ window.onload = function() {
         console.log('Error retrieving Instance ID token. ', err);
     })
 
-    const socket = new WebSocket('ws://' + ip + ':8080/ws');
+    socket = new WebSocket('ws://' + ip + ':8080/ws');
     socket.onopen = function (event) {
         console.log("open socket")
         socket.send(JSON.stringify({type: 'connect',token : childFrame.contentWindow.document.querySelector('#token').value}));
@@ -43,6 +45,8 @@ window.onload = function() {
             case 'login' :
                 if(receivedMessage.data.indexOf('입력한 정보가 올바르지 않습니다.') == -1) {
                     document.querySelector('#myId').innerText = '아이디 : ' + receivedMessage.data;
+                } else {
+                    alertPopup(receivedMessage.data);
                 }
                 childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
@@ -84,6 +88,21 @@ window.onload = function() {
             case 'invite' :
                 childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
+            case 'idChk' :
+                if(receivedMessage.data.indexOf('Success') == -1){
+                    resetPwdAlertPopup(receivedMessage.data);
+                    return;
+                }
+                document.querySelector('#resetPwd').style.display = 'none';
+                document.querySelector('#savePwd').style.display = '';
+                document.querySelector('#idGroup').style.display = 'none';
+                document.querySelector('#emailGroup').style.display = 'none';
+                document.querySelector('#pwdGroup').style.display = '';
+                document.querySelector('#pwdChkGroup').style.display = '';
+                break;
+            case 'savePwd' :
+                resetPwdAlertPopup(receivedMessage.data);
+                break;
             default :
                 childFrame.contentWindow.postMessage(receivedMessage, '*');
                 break;
@@ -93,11 +112,6 @@ window.onload = function() {
     socket.onclose = function (event) {
         console.log('WebSocket connection closed:', event);
     };
-
-    // 이벤트 발생 시 서버로 메시지 전송
-    function sendMessageToServer(message) {
-        socket.send(JSON.stringify(message));
-    }
 
     //JSON 형식인지 확인하기
     function isJSON(str) {
@@ -111,8 +125,82 @@ window.onload = function() {
     });
 };
 
+//비밀번호 찾기 팝업 닫기 함수
+function onResetPwdCancel(){
+    document.querySelector('.resetPwdPopup').style.display = 'none';
+    document.querySelector('#parent_overlay').style.display = 'none';
+}
+
 //알럿 닫기
 function onAlertClick(){
     document.querySelector('.alertPopup').style.display = 'none';
-    window.parent.document.querySelector('#parent_overlay').style.display = 'none';
+    if(document.querySelector('.resetPwdPopup').style.display != 'none'){
+        document.querySelector('#resetPwd_overlay').style.display = 'none';
+    } else {
+        document.querySelector('#parent_overlay').style.display = 'none';
+    }
+}
+
+//비밀번호 저장 함수
+function onSavePwd() {
+    const userId = document.querySelector('#resetPwd_id').value;
+    const email = document.querySelector('#resetPwd_email').value;
+    const resetPwd = document.querySelector('#resetPwd_newPwd').value;
+    const resetPwdChk = document.querySelector('#resetPwd_newPwdChk').value;
+    if(resetPwd == ''){
+        resetPwdAlertPopup("비밀번호를 입력해주세요.");
+        return;
+    }
+    if(resetPwdChk == ''){
+        resetPwdAlertPopup("비밀번호 확인을 입력해주세요.");
+        return;
+    }
+    if(resetPwd != resetPwdChk){
+        resetPwdAlertPopup("입력해주신 비밀번호와 비밀번호 확인이 다릅니다. <br/> 확인 후 다시 시도해주세요.");
+        return;
+    }
+    sendMessageToServer({type: 'savePwd',
+        userId: userId,
+        email : email,
+        password : resetPwd
+    });
+}
+
+//비밀번호 찾기 함수
+function onResetPwd(){
+    const userId = document.querySelector('#resetPwd_id').value;
+    const email = document.querySelector('#resetPwd_email').value;
+    if(userId == ''){
+        resetPwdAlertPopup("찾을 아이디를 입력해주세요.");
+        return;
+    }
+    if(email == ''){
+        resetPwdAlertPopup("가입하실때 입력하신 이메일을 입력해주세요.");
+        return;
+    }
+    sendMessageToServer({type: 'idChk',
+        userId: userId,
+        email : email,
+    });
+}
+
+function resetPwdAlertPopup(message){
+    if(document.querySelector('.resetPwdPopup').style.display != 'none'){
+        document.querySelector('.resetPwdPopup').style.display = 'none';
+        document.querySelector('#parent_overlay').style.display = 'none';
+    }
+    document.querySelector('.alertPopup_text').innerHTML = message;
+    document.querySelector('.alertPopup').style.display = '';
+    document.querySelector('#resetPwd_overlay').style.display = 'block';
+}
+
+function alertPopup(message){
+    document.querySelector('.alertPopup_text').innerHTML = message;
+    document.querySelector('.alertPopup').style.display = '';
+    document.querySelector('#parent_overlay').style.display = 'block';
+}
+
+// 이벤트 발생 시 서버로 메시지 전송
+function sendMessageToServer(message) {
+    socket.send(JSON.stringify(message));
 }
