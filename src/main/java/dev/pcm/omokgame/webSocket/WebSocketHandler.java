@@ -655,7 +655,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     Map.of("type", "player_select")
             );
             for (WebSocketSession sess : sessions) {
-                if (sess.isOpen() && sess.getAttributes().get("userId").equals(room.getBlackPlayer())) {
+                if (sess.isOpen() && sess.getAttributes().get("userId") != null && sess.getAttributes().get("userId").equals(room.getBlackPlayer())) {
                     try {
                         sess.sendMessage(new TextMessage(playerSelect));
                     } catch (IOException e) {
