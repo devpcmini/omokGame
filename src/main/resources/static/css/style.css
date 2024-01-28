@@ -307,6 +307,14 @@ body {
     touch-action: none;
 }
 
+#logout {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
 .stone {
     position: absolute;
     width: 4.5%;
@@ -393,7 +401,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 9998;
+    z-index: 9997;
 }
 
 .resetPwdPopup_main {
@@ -825,9 +833,9 @@ body {
 
 #myId {
     text-align: right;
-    margin-right: 40%;
     width: 100%;
     margin-top: 10px;
+    margin-right: 10px;
 }
 
 @media screen and (orientation: portrait) {
@@ -1035,6 +1043,27 @@ html::-webkit-scrollbar-thumb:hover {
     padding:7px 20px;
     border-radius:25px;
     background:rgba(255,255,255,.1);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#spinner {
+    border: 8px solid rgba(0, 0, 0, 0.1);
+    border-top: 8px solid #3498db;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+    z-index: 9999;
+}
+
+#progress-text {
+    text-align: center;
+    z-index: 9999;
 }
 
 .hr{

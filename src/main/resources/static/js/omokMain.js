@@ -133,6 +133,7 @@ window.addEventListener("message", function (message) {
                         blackDiv.classList.remove('blink_turn');
                     }
                 }
+                audio.play();
                 loadOmokBoard();
                 break;
             case 'undoMove' :
@@ -332,7 +333,6 @@ function handleBoardClick(thisCoord) {
         } else {
             coord = thisCoord;
         }
-        audio.play();
         parentToMessage({type: 'move', data: coord});
         document.querySelector('#giveUp').disabled = true;
         document.querySelector('#undoMove').disabled = true;
@@ -667,6 +667,7 @@ function alertPopup(message){
     window.parent.document.querySelector('.alertPopup_text').innerHTML = message;
     window.parent.document.querySelector('.alertPopup').style.display = '';
     window.parent.document.querySelector('#parent_overlay').style.display = 'block';
+    window.parent.document.querySelector('#isPop').value = true;
 }
 
 function setCookie(name, id, expiryDays) {
@@ -722,4 +723,5 @@ function resetPwd(){
     window.parent.document.querySelector('#pwdChkGroup').style.display = 'none';
     window.parent.document.querySelector('.resetPwdPopup').style.display = '';
     window.parent.document.querySelector('#parent_overlay').style.display = 'block';
+    window.parent.document.querySelector('#isPop').value = true;
 }

@@ -31,8 +31,16 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
     <h1 style="margin-top: 50px; color: black;">Omok Game</h1>
-    <h4 id="myId" style="color: black;"></h4>
-    <div id="parent_overlay" class="overlay"></div>
+    <input type="hidden" id="isPop" value="">
+    <div style="display: flex; width: 100%; margin-right: 40%;">
+        <h4 id="myId" style="color: black;"></h4>
+        <button id="logout" style="display: none">
+            <img src="../img/images.png" style="width: 30px; height: 30px; margin-right: 10px;">
+        </button>
+    </div>
+    <div id="parent_overlay" class="overlay" style="display: block"></div>
+    <div id="spinner"></div>
+    <div id="progress-text">로딩 중...</div>
     <div class="alertPopup" style="display: none">
         <div class="alertPopup_main">
             <h3 class="alertPopup_text"></h3>
