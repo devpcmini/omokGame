@@ -195,7 +195,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     if(room != null) {
                         if (!"".equals(room.getBlackPlayer())) {
                             jsonPayload = objectMapper.writeValueAsString(
-                                    Map.of("type", "error", "msg", "다른 플레이어가 참가중입니다." )
+                                    Map.of("type", "error", "data", "다른 플레이어가 참가중입니다." )
                             );
                             session.sendMessage(new TextMessage(jsonPayload));
                             return;
@@ -210,7 +210,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     if(room != null) {
                         if (!"".equals(room.getWhitePlayer())) {
                             jsonPayload = objectMapper.writeValueAsString(
-                                    Map.of("type", "error", "msg", "다른 플레이어가 참가중입니다." )
+                                    Map.of("type", "error", "data", "다른 플레이어가 참가중입니다." )
                             );
                             session.sendMessage(new TextMessage(jsonPayload));
                             return;
@@ -252,25 +252,36 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 break;
             case "undoMove" :
                 room.getTakes().remove(room.getTakes().size() - 1);
-                room.getTakes().remove(room.getTakes().size() - 1);
                 broadMessage = objectMapper.writeValueAsString(
                         Map.of("type", "undoMove","data", room.getTakes())
                 );
                 broadcastMessage(roomName,broadMessage);
-                String undoMessage = objectMapper.writeValueAsString(
-                        Map.of("type", "message", "data", "<b class='systemMessage'>[무르기] => " + session.getAttributes().get("userId") + "</b>")
-                );
-                broadcastMessage(roomName,undoMessage);
                 break;
             case "giveUp" :
                 String giveUpColor = String.valueOf(jsonNode.get("color").asText());
-                String winner = room.getBlackPlayer().equals(giveUpColor) ? room.getWhitePlayer() : room.getBlackPlayer();
+                String giveUpUser = room.getBlackPlayer().equals(String.valueOf(jsonNode.get("userId").asText())) ? room.getBlackPlayer() : room.getWhitePlayer();
                 broadMessage = objectMapper.writeValueAsString(
                         Map.of("type", "end", "data", giveUpColor.equals("black") ? "white" : "black")
                 );
                 broadcastMessage(roomName,broadMessage);
                 broadMessage = objectMapper.writeValueAsString(
-                        Map.of("type", "message", "data", "<b class='systemMessage'>[항복] => " + winner + "</b>")
+                        Map.of("type", "message", "data", "<b class='systemMessage'>[항복] '" + giveUpUser + "'님이 항복하여서 '"
+                                + (giveUpColor.equals("black") ? room.getWhitePlayer() : room.getBlackPlayer())  + "'님이 승리하셨습니다. </b>")
+                );
+                broadcastMessage(roomName,broadMessage);
+                room.setBlackPlayer("");
+                room.setWhitePlayer("");
+                emitPlayerChange(room);
+                break;
+            case "timeOut" :
+                String timeOutColor = String.valueOf(jsonNode.get("color").asText());
+                String timeOutUser = room.getBlackPlayer().equals(String.valueOf(jsonNode.get("userId").asText())) ? room.getBlackPlayer() : room.getWhitePlayer();
+                broadMessage = objectMapper.writeValueAsString(
+                        Map.of("type", "end", "data", timeOutColor.equals("black") ? "white" : "black")
+                );
+                broadcastMessage(roomName,broadMessage);
+                broadMessage = objectMapper.writeValueAsString(
+                        Map.of("type", "message", "data", "<b class='systemMessage'>[시간 초과] 시간 초과로 인해 '" + timeOutUser + "'님이 승리하셨습니다.</b>")
                 );
                 broadcastMessage(roomName,broadMessage);
                 room.setBlackPlayer("");
@@ -340,7 +351,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     if (omok33Rule(room.getTakes(), jsonNode.get("data"))) {
                         room.getTakes().remove(room.getTakes().size() - 1);
                         pairMessage = objectMapper.writeValueAsString(
-                                Map.of("type", "message", "data", "<b class='systemMessage'>[쌍삼] => " + session.getAttributes().get("userId") + "</b>")
+                                Map.of("type", "message", "data", "<b class='systemMessage'>[쌍삼] '쌍삼'으로 인해 해당 수를 둘 수 없습니다. 다른 수를 선택해주세요.</b>")
                         );
                         broadcastMessage(roomName, pairMessage);
                         return;
@@ -350,7 +361,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     if (omok44Rule(room.getTakes(), jsonNode.get("data"))) {
                         room.getTakes().remove(room.getTakes().size() - 1);
                         pairMessage = objectMapper.writeValueAsString(
-                                Map.of("type", "message", "data", "<b class='systemMessage'>[사사] => " + session.getAttributes().get("userId") + "</b>")
+                                Map.of("type", "message", "data", "<b class='systemMessage'>[사사] '사사' 금수 상황이 있습니다. 해당 수를 두면 안 됩니다.</b>")
                         );
                         broadcastMessage(roomName, pairMessage);
                         return;
@@ -360,7 +371,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     if (omokJangmokRule(room.getTakes(), jsonNode.get("data"))) {
                         room.getTakes().remove(room.getTakes().size() - 1);
                         pairMessage = objectMapper.writeValueAsString(
-                                Map.of("type", "message", "data", "<b class='systemMessage'>[장목] => " + session.getAttributes().get("userId") + "</b>")
+                                Map.of("type", "message", "data", "<b class='systemMessage'>[장목] '장목' 금수 상황이 있습니다. 해당 수를 두면 안 됩니다.</b>")
                         );
                         broadcastMessage(roomName, pairMessage);
                         return;
@@ -378,7 +389,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     );
                     broadcastMessage(roomName,broadMessage);
                     broadMessage = objectMapper.writeValueAsString(
-                            Map.of("type", "message", "data", "<b class='systemMessage'>[승리] => " +session.getAttributes().get("userId") + "</b>")
+                            Map.of("type", "message", "data", "<b class='systemMessage'>[승리] '" +session.getAttributes().get("userId") + "'님이 오목을 완료하여 승리하셨습니다.</b>")
                     );
                     broadcastMessage(roomName,broadMessage);
                     room.setBlackPlayer("");
@@ -516,7 +527,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         );
         session.sendMessage(new TextMessage(jsonPayload));
         String broadMessage = objectMapper.writeValueAsString(
-                Map.of("type", "message", "data", "<b class='systemMessage'>[입장] => " + session.getAttributes().get("userId") + "</b>")
+                Map.of("type", "message", "data", "<b class='systemMessage'>[입장] '" + session.getAttributes().get("userId") + "'님이 입장하셨습니다.</b>")
         );
         broadcastMessage(name,broadMessage);
     }
@@ -613,7 +624,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 }
 
                 String broadMessage = objectMapper.writeValueAsString(
-                        Map.of("type", "message", "data", "<b class='systemMessage'>[퇴장] => " + session.getAttributes().get("userId") + "</b>")
+                        Map.of("type", "message", "data", "<b class='systemMessage'>[퇴장] '" + session.getAttributes().get("userId") + "'님이 퇴장하셨습니다. </b>")
                 );
                 broadcastMessage(name,broadMessage);
             }
