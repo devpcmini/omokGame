@@ -1,7 +1,58 @@
 let socket;
+let messaging;
+let childFrame;
+
+function getFCMToken() {
+    messaging.getToken().then(function (currentToken) {
+        console.log('현재 토큰: ' + currentToken);
+        if (currentToken) {
+            childFrame.contentWindow.document.querySelector('#token').value = currentToken;
+            socket.send(JSON.stringify({type: 'connect', token: currentToken}));
+            console.log('토큰 가져오기 성공 - ' + currentToken);
+        } else {
+            console.log('토큰이 없습니다. 권한을 요청하여 생성하세요.');
+        }
+    }).catch(function (err) {
+        console.log('토큰을 가져오는 중 오류 발생. ', err);
+    });
+}
+
+function checkWebSocketAndToken() {
+    if (socket.readyState === WebSocket.OPEN && childFrame.contentWindow.document.querySelector('#token').value != "") {
+        if(document.querySelector('#isPop').value != 'true') {
+            document.querySelector('#parent_overlay').style.display = 'none';
+        }
+        document.getElementById('spinner').style.display = 'none';
+        document.getElementById('progress-text').style.display = 'none';
+    } else {
+        document.querySelector('#parent_overlay').style.display = 'block';
+        document.getElementById('spinner').style.display = 'block';
+        document.getElementById('progress-text').innerText = '로딩 중...';
+    }
+}
+
+function forceRefreshToken() {
+    messaging.getToken().then(function(currentToken) {
+        if (currentToken) {
+            // 현재 토큰이 있다면, 서버에 등록하거나 필요한 작업을 수행할 수 있음
+            console.log('현재 FCM 토큰: ' + currentToken);
+            // 토큰 갱신을 트리거하려면 현재 토큰을 삭제하고
+            // 앱이 다시 실행될 때나 권한이 부여될 때 새로운 토큰을 얻게 됨
+            messaging.deleteToken(currentToken).then(function() {
+                console.log('토큰 삭제 성공.');
+            }).catch(function(err) {
+                console.log('토큰 삭제 실패: ', err);
+            });
+        } else {
+            console.log('현재 FCM 토큰이 없습니다.');
+        }
+    }).catch(function(err) {
+        console.log('FCM 토큰을 가져오는 중 오류 발생 ', err);
+    });
+}
 
 window.onload = function() {
-    let childFrame = document.getElementById('frameElement');
+    childFrame = document.getElementById('frameElement');
     // Initialize Firebase
     firebase.initializeApp({
         apiKey: "AIzaSyCScK2DGrTe-lSdi7euF81ilaLygrEMcYo",
@@ -13,25 +64,18 @@ window.onload = function() {
         measurementId: "G-M46FN291B5"
     });
 
-    const messaging = firebase.messaging();
-    const publicVapidKey = 'BDpyANOK-A_F167S6epNvW9p6Z-l_bUoZem0gyW8jgnHaRpTyqbk4UjOP7PzLdX6qdLHMoUynaj_4_3exq8PNuE';
+    messaging = firebase.messaging();
+    const publicVapidKey = 'BB7-hEbajhQngV5x-LK5PZiTY3noPyum8AsmzDF2AC3Us7hAFq7tiGwVHPyG-1JsTZRRj5wAE5xSfEE46TRYUq0';
     messaging.usePublicVapidKey(publicVapidKey);
-    messaging.getToken().then(function(currentToken) {
-        console.log('currentToken: ' + currentToken);
-        if (currentToken) {
-            childFrame.contentWindow.document.querySelector('#token').value = currentToken;
-            console.log ('Token get - ' + currentToken);
-        } else {
-            console.log('No Instance ID token available. Request permission to generate one.');
-        }
-    }).catch(function(err) {
-        console.log('Error retrieving Instance ID token. ', err);
-    })
+    // FCM 토큰을 가져오는 함수
+
+    // 초기 FCM 토큰을 가져옴
+    getFCMToken();
+    setInterval(checkWebSocketAndToken, 1000);
 
     socket = new WebSocket('ws://' + ip + ':8080/ws');
     socket.onopen = function (event) {
         console.log("open socket")
-        socket.send(JSON.stringify({type: 'connect',token : childFrame.contentWindow.document.querySelector('#token').value}));
     };
 
     socket.onmessage = function (event) {
@@ -45,6 +89,7 @@ window.onload = function() {
             case 'login' :
                 if(receivedMessage.data.indexOf('입력한 정보가 올바르지 않습니다.') == -1) {
                     document.querySelector('#myId').innerText = '아이디 : ' + receivedMessage.data;
+                    document.querySelector('#logout').style.display = 'flex';
                 } else {
                     alertPopup(receivedMessage.data);
                 }
@@ -110,6 +155,7 @@ window.onload = function() {
     };
 
     socket.onclose = function (event) {
+        forceRefreshToken();
         console.log('WebSocket connection closed:', event);
     };
 
@@ -123,12 +169,17 @@ window.onload = function() {
             sendMessageToServer(message.data);
         }
     });
+
+    document.querySelector('#logout').addEventListener('click',()=>{
+        location.reload(true);
+    });
 };
 
 //비밀번호 찾기 팝업 닫기 함수
 function onResetPwdCancel(){
     document.querySelector('.resetPwdPopup').style.display = 'none';
     document.querySelector('#parent_overlay').style.display = 'none';
+    document.querySelector('#isPop').value = false;
 }
 
 //알럿 닫기
@@ -138,6 +189,7 @@ function onAlertClick(){
         document.querySelector('#resetPwd_overlay').style.display = 'none';
     } else {
         document.querySelector('#parent_overlay').style.display = 'none';
+        document.querySelector('#isPop').value = false;
     }
 }
 
@@ -188,6 +240,7 @@ function resetPwdAlertPopup(message){
     if(document.querySelector('.resetPwdPopup').style.display != 'none'){
         document.querySelector('.resetPwdPopup').style.display = 'none';
         document.querySelector('#parent_overlay').style.display = 'none';
+        document.querySelector('#isPop').value = false;
     }
     document.querySelector('.alertPopup_text').innerHTML = message;
     document.querySelector('.alertPopup').style.display = '';
@@ -198,6 +251,7 @@ function alertPopup(message){
     document.querySelector('.alertPopup_text').innerHTML = message;
     document.querySelector('.alertPopup').style.display = '';
     document.querySelector('#parent_overlay').style.display = 'block';
+    document.querySelector('#isPop').value = true;
 }
 
 // 이벤트 발생 시 서버로 메시지 전송
