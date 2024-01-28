@@ -10,6 +10,8 @@ let isFirst = true;
 let myId;
 let roomName;
 let joinMessage;
+let secondsRemaining = 30;
+let timerInterval;
 
 const audio = new Audio('../audio/stoneSound.wav');
 
@@ -47,24 +49,20 @@ window.addEventListener("message", function (message) {
                 break;
             case 'start' :
                 isStart = true;
-                document.querySelector('.gameStart_button').disabled = true;
-                document.querySelector('#moveViewer').disabled = true;
-                document.querySelector('#inviteUser').disabled = true;
-                document.querySelector('#leaveRoom').disabled = true;
-                if(myId == document.querySelectorAll('.gameParticipants_playername')[1].innerText) {
-                    document.querySelector('#giveUp').disabled = true;
-                    document.querySelector('#undoMove').disabled = true;
-                }
                 document.querySelector('.board').style.cursor = 'pointer';
+                clearInterval(timerInterval);
+                secondsRemaining = 30;
+                timerInterval = setInterval(updateTimer, 1000);
                 loadOmokBoard();
                 break;
             case 'end' : //게임 종료
                 isStart = false;
-                document.querySelector('#moveViewer').disabled = false;
-                document.querySelector('#inviteUser').disabled = false;
-                document.querySelector('#leaveRoom').disabled = false;
                 publicRoom = [roomName,"","",[]];
                 GameEndScreen(receivedMessage.data);
+                clearInterval(timerInterval);
+                const progressBar = document.getElementById('progress-bar');
+                progressBar.style.width = (0 / 30) * 100 + '%';
+                createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
                 break;
             case 'roomList' : //방 목록 조회
                 createRoomList({ roomList: receivedMessage.data.map(room => ({ name: room.name }))});
@@ -82,16 +80,19 @@ window.addEventListener("message", function (message) {
                 break;
             case 'message' : //메세지 받기
                 broadMessage.push(receivedMessage.data);
-                if(isFirst && receivedMessage.data.indexOf('[입장] => ') > -1){
+                if(isFirst && receivedMessage.data.indexOf('[입장] ') > -1){
                     isFirst = false;
-                    myId = receivedMessage.data.replace("[입장] => ","").replace(/<\/?[^>]+(>|$)/g, "");
-                }
-                if(receivedMessage.data.indexOf('[쌍삼] => ') > -1){
-                    myTurn = true;
+                    // 정규식 패턴
+                    const regexPattern = /'(\d+)'/;
+                    // 정규식을 사용하여 매칭된 숫자를 추출
+                    const match = receivedMessage.data.match(regexPattern);
+                    // 매칭된 숫자가 있다면 첫 번째 매치된 그룹을 추출
+                    const extractedNumber = match ? match[1] : null;
+                    myId = extractedNumber;
                 }
                 joinMessage = broadMessage.map(messageLine).join("");
-                createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
                 document.querySelector('#messages').scrollTop = document.querySelector('#messages').scrollHeight;
+                createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
                 break;
             case 'sendMessage' :
                 if(receivedMessage.data.indexOf(myId) > -1){
@@ -99,17 +100,13 @@ window.addEventListener("message", function (message) {
                 }
                 broadMessage.push(receivedMessage.data);
                 joinMessage = broadMessage.map(messageLine).join("");
-                createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
                 document.querySelector('#messages').scrollTop = document.querySelector('#messages').scrollHeight;
+                createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
                 break;
             case 'player_select' : //해당 player turn 지정
-                myTurn = true;
-                document.querySelector('#giveUp').disabled = false;
-                document.querySelector('#undoMove').disabled = false;
                 loadOmokBoard();
                 break;
             case 'changeRole' :
-                myTurn = false;
                 publicRoom[1] = receivedMessage.data.blackPlayer;
                 publicRoom[2] = receivedMessage.data.whitePlayer;
                 if (publicRoom[1] !== "" &&
@@ -117,27 +114,20 @@ window.addEventListener("message", function (message) {
                     publicRoom[3] = [];
                 }
                 loadOmokBoard();
-                createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
                 break;
             case 'move' : //오목판 reload
                 publicRoom[3].push(receivedMessage.data);
-                const color = publicRoom[3].length % 2 === 0 ? 'black' : 'white';
-                if(color === 'black') {
-                    blackDiv.classList.add('blink_turn');
-                    if(whiteDiv.classList.contains('blink_turn')) {
-                        whiteDiv.classList.remove('blink_turn');
-                    }
-                } else if(color === 'white'){
-                    whiteDiv.classList.add('blink_turn');
-                    if(blackDiv.classList.contains('blink_turn')) {
-                        blackDiv.classList.remove('blink_turn');
-                    }
-                }
                 audio.play();
+                clearInterval(timerInterval);
+                secondsRemaining = 30;
+                timerInterval = setInterval(updateTimer, 1000);
                 loadOmokBoard();
                 break;
             case 'undoMove' :
                 publicRoom[3] = receivedMessage.data;
+                clearInterval(timerInterval);
+                secondsRemaining = 30;
+                timerInterval = setInterval(updateTimer, 1000);
                 loadOmokBoard();
                 break;
             case 'availUsers' :
@@ -252,29 +242,39 @@ function roomInfo(room) {
 function createGameParticipants(roomName, blackPlayer, whitePlayer) {
     const gamePanel = document.querySelector(".gameParticipants");
     const startBtnDisabled = !((blackPlayer !== '' && whitePlayer !== '') && myId === blackPlayer) || isStart;
+    const blackTurn = publicRoom[3].length % 2 === 0 && isStart ? 'blink_turn' : '';
+    const whiteTurn = publicRoom[3].length % 2 !== 0 && isStart ? 'blink_turn' : '';
     gamePanel.innerHTML = `
       <div class="gameParticipants_main">
         <h3 class="gameParticipants_title">${roomName}</h3>
+        <div id="progress-bar-container" style="width: 100%; height: 30px; background-color: #f1f1f1;
+            border-radius: 5px; margin: 20px 0; overflow: hidden;">
+            <div id="progress-bar" style="height: 100%; width: 0%; background-color: #FFA500;
+                border-radius: 5px; transition: width 1s linear 0s;">
+            </div>
+        </div>
         <div class="gameParticipants_players">
           <div class="gameParticipants_player">
-            <h4 class="gameParticipants_playercolor gameParticipants_blackColor">
+            <h4 class="gameParticipants_playercolor gameParticipants_blackColor ${blackTurn}">
               Black
             </h4>
             <div class="gameParticipants_playerinfo">
               ${
                 blackPlayer === ""
                     ? `<button class="gameParticipants_join" onclick="joinBlackPlayer()">참가</button>`
-                    : `<p class="gameParticipants_playername">${blackPlayer}</p>`
+                    : `<p class="gameParticipants_black_playername">${blackPlayer}</p>`
                 }
             </div>
           </div>
           <div class="gameParticipants_player">
-            <h4 class="gameParticipants_playercolor gameParticipants_whiteColor">White</h4>
+            <h4 class="gameParticipants_playercolor gameParticipants_whiteColor ${whiteTurn}">
+                White
+            </h4>
             <div class="gameParticipants_playerinfo">
               ${
                   whitePlayer === ""
                       ? `<button class="gameParticipants_join" onclick="joinWhitePlayer()">참가</button>`
-                      : `<p class="gameParticipants_playername">${whitePlayer}</p>`
+                      : `<p class="gameParticipants_white_playername">${whitePlayer}</p>`
               }
             </div>
           </div>
@@ -288,13 +288,13 @@ function createGameParticipants(roomName, blackPlayer, whitePlayer) {
         </div>
         <div class="gameParticipants_buttons">
             <button class="gameStart_button" ${startBtnDisabled === true ? `disabled="true"` : ``} style="width: 80%" onclick="gameStart()">게임시작</button>
-            <button class="gameParticipants_button" ${startBtnDisabled === true ? `disabled="true"` : ``} id="moveViewer" style="width: 17%" onclick="moveViewer()">관전하기</button>
+            <button class="gameParticipants_button" ${isStart === true ? `disabled="true"` : ``} id="moveViewer" style="width: 17%" onclick="moveViewer()">관전하기</button>
         </div>
       </div>
       <div style="width: 100%">
           <div class="gameParticipants_buttons">
-            <button class="gameParticipants_button" ${startBtnDisabled === true && !myTurn ? `disabled="true"` : ``} id="giveUp" onclick="giveUp()">항복</button>
-            <button class="gameParticipants_button" ${startBtnDisabled === true && !myTurn ? `disabled="true"` : ``} id="undoMove" onclick="undoMove()">무르기</button>
+            <button class="gameParticipants_button" ${myTurn === true && isStart === true ? `` : `disabled="true"`} id="giveUp" onclick="giveUp()">항복</button>
+            <button class="gameParticipants_button" ${myTurn === true && isStart === true ? `` : `disabled="true"`} id="undoMove" onclick="undoMove()">무르기</button>
           </div>
           <div class="gameParticipants_buttons">
             <button class="gameParticipants_button" ${isStart === true ? `disabled="true"` : ``} id="inviteUser" onclick="inviteUser()">초대하기</button>
@@ -327,15 +327,14 @@ function handleBoardLeave() {
 //오목판 클릭 시 이벤트
 function handleBoardClick(thisCoord) {
     if (isStart) {
-        myTurn = false;
         if (publicRoom[3].find((take) => take.x === thisCoord.x && take.y === thisCoord.y) !== undefined) {
             return;
         } else {
             coord = thisCoord;
         }
         parentToMessage({type: 'move', data: coord});
-        document.querySelector('#giveUp').disabled = true;
-        document.querySelector('#undoMove').disabled = true;
+        // document.querySelector('#giveUp').disabled = true;
+        // document.querySelector('#undoMove').disabled = true;
     }
 }
 
@@ -343,6 +342,15 @@ function handleBoardClick(thisCoord) {
 function loadOmokBoard() {
     const boardDiv = document.querySelector(".board");
     boardDiv.innerHTML = '';
+    if(isStart) {
+        const color = myId == document.querySelector('.gameParticipants_black_playername').innerText ? 'black' : 'white';
+        const turnColor = publicRoom[3].length % 2 === 0 ? 'black' : 'white';
+        if (color == turnColor) {
+            myTurn = true;
+        } else {
+            myTurn = false;
+        }
+    }
     if(isStart && myTurn) {
         boardDiv.appendChild(handleStoneEvent(handleBoardEnter,handleBoardLeave,handleBoardClick));
     }
@@ -352,6 +360,7 @@ function loadOmokBoard() {
     if(publicRoom[3].length > 0){
         boardDiv.appendChild(createStone("prev",publicRoom[3][publicRoom[3].length-1].x, publicRoom[3][publicRoom[3].length-1].y));
     }
+    createGameParticipants(publicRoom[0], publicRoom[1], publicRoom[2]);
 }
 
 //오목돌 생성 함수
@@ -463,8 +472,9 @@ function onGameExitCancel(){
 //항복 함수
 function onGiveUp(){
     setInvisible('.giveUpPopup');
-    const color = myId == document.querySelectorAll('.gameParticipants_playername')[0].innerText ? 'black' : 'white';
-    parentToMessage({type: 'giveUp', color: color});
+    const color = myId == document.querySelector('.gameParticipants_black_playername').innerText ? 'black' : 'white';
+    const userId = color == 'black' ? document.querySelector('.gameParticipants_black_playername').innerText : document.querySelector('.gameParticipants_white_playername').innerText;
+    parentToMessage({type: 'giveUp', color: color, userId : userId });
 }
 
 //항복 취소 함수
@@ -724,4 +734,18 @@ function resetPwd(){
     window.parent.document.querySelector('.resetPwdPopup').style.display = '';
     window.parent.document.querySelector('#parent_overlay').style.display = 'block';
     window.parent.document.querySelector('#isPop').value = true;
+}
+
+function updateTimer() {
+    const progressBar = document.getElementById('progress-bar');
+    progressBar.style.width = (secondsRemaining / 30) * 100 + '%';
+    if (secondsRemaining === 0) {
+        clearInterval(timerInterval);
+        // 시간 초과 시
+        const color = document.querySelector('.blink_turn').classList.contains('gameParticipants_whiteColor') ? 'white' : 'black'
+        const userId = color == 'black' ? document.querySelector('.gameParticipants_black_playername').innerText : document.querySelector('.gameParticipants_white_playername').innerText;
+        parentToMessage({type: 'timeOut', color: color, userId : userId });
+    } else {
+        secondsRemaining--;
+    }
 }
