@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.pcm.omokgame.entity.UserEntity;
 import dev.pcm.omokgame.fcm.FCMService;
+import dev.pcm.omokgame.kafka.KafkaProducerService;
 import dev.pcm.omokgame.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,11 +24,14 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
     private final UserService userService;
     private final FCMService fCMService;
+    private final KafkaProducerService kafkaProducerService;
 
     public WebSocketHandler(UserService userService,
-                            FCMService fCMService) {
+                            FCMService fCMService,
+                            KafkaProducerService kafkaProducerService) {
         this.userService = userService;
         this.fCMService = fCMService;
+        this.kafkaProducerService = kafkaProducerService;
     }
 
     private static Set<WebSocketSession> sessions = new HashSet<>();
@@ -86,6 +90,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
             userId = jsonNode.get("userId").asText();
             password = jsonNode.get("password").asText();
         }
+        kafkaProducerService.sendKafkaMessage(jsonNode.toString());
         switch (type) {
             case "idChk" :
                 userId = jsonNode.get("userId").asText();

@@ -1,6 +1,7 @@
 package dev.pcm.omokgame.webSocket;
 
 import dev.pcm.omokgame.fcm.FCMService;
+import dev.pcm.omokgame.kafka.KafkaProducerService;
 import dev.pcm.omokgame.service.UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,11 +14,14 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     private final UserService userService;
     private final FCMService fCMService;
+    private final KafkaProducerService kafkaProducerService;
 
     public WebSocketConfig(UserService userService,
-                           FCMService fCMService) {
+                           FCMService fCMService,
+                           KafkaProducerService kafkaProducerService) {
         this.userService = userService;
         this.fCMService = fCMService;
+        this.kafkaProducerService = kafkaProducerService;
     }
 
     @Override
@@ -27,7 +31,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Bean
     public WebSocketHandler webSocketHandler() {
-        return new WebSocketHandler(userService, fCMService);
+        return new WebSocketHandler(userService, fCMService,kafkaProducerService);
     }
 
     @Bean
